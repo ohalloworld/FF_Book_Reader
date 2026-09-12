@@ -24,6 +24,27 @@ endpoint are one process (`npm run dev`), nothing is hosted externally.
 Playing the demo book doesn't need an API key at all; the key is only used
 when you use the "Import Book Rules" screen.
 
+## Using it on your phone
+
+It's a PWA (installable web app), so you can put it on your phone's home
+screen and use it full-screen like a native app — as long as your phone is
+on the **same WiFi** as the computer running `npm run dev` (nothing is
+hosted anywhere else, so it only reaches devices on your local network):
+
+1. Run `npm run dev` on your computer. It prints a `Network:` URL, e.g.
+   `http://192.168.1.23:5173/` — that's your computer's LAN address.
+2. On your phone (same WiFi), open that URL in the browser.
+3. Add it to your home screen:
+   - **iOS (Safari):** Share button → "Add to Home Screen"
+   - **Android (Chrome):** ⋮ menu → "Add to Home screen" / "Install app"
+
+It'll launch full-screen with its own icon, and the service worker caches
+the app shell so it still loads even if your connection drops mid-read.
+Save/resume is stored in your phone's own browser storage, independent of
+the server. Your computer only needs to stay on and running `npm run dev`
+for: the very first load (before the service worker has cached anything),
+and the "Import Book Rules" screen (which calls Claude via your computer).
+
 ## Architecture
 
 - `src/engine/types.ts` — the data model. A `Gamebook` is a graph of
@@ -60,6 +81,9 @@ when you use the "Import Book Rules" screen.
   content.
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
+- `vite.config.ts` — `server.host: true` (LAN access for phones) and
+  `vite-plugin-pwa` (installable manifest + offline app-shell caching,
+  icons in `public/`).
 
 ## Importing a book's rules
 

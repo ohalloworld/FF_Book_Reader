@@ -52,7 +52,8 @@ body {
   max-width: 960px;
   margin: 0 auto;
   min-height: 100svh;
-  padding: 24px 16px 48px;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px
+    max(16px, env(safe-area-inset-left));
 }
 
 h1,
@@ -131,8 +132,9 @@ p {
 
 .pdf-range-picker {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   margin-top: 12px;
   font-size: 14px;
 }
@@ -141,6 +143,7 @@ p {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .pdf-range-picker input[type="number"] {
