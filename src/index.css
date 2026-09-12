@@ -105,6 +105,66 @@ p {
   box-shadow: var(--shadow);
 }
 
+.importer-subhead {
+  margin-top: 24px;
+  font-size: 17px;
+}
+
+.pdf-import {
+  margin-top: 12px;
+}
+
+.pdf-file-label {
+  display: inline-block;
+  font-size: 15px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.pdf-file-input {
+  display: none;
+}
+
+.pdf-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.pdf-range-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-range-picker input[type="number"] {
+  width: 64px;
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.pdf-preview {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
 .rules-textarea {
   width: 100%;
   font: inherit;

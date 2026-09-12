@@ -25,6 +25,37 @@ export async function parseRulesText(rulesText: string): Promise<Omit<RuleSet, "
   return body.ruleSet as Omit<RuleSet, "id" | "source">;
 }
 
+export interface PdfPage {
+  num: number;
+  text: string;
+}
+
+export interface PdfExtractionResult {
+  total: number;
+  title?: string;
+  pages: PdfPage[];
+  warning?: string;
+}
+
+/** Sends raw PDF bytes to the local /api/extract-pdf-text endpoint (see
+ * server/rulesApiPlugin.ts). The PDF is parsed in-memory on your machine
+ * and never leaves it. */
+export async function extractPdfText(file: File): Promise<PdfExtractionResult> {
+  const bytes = await file.arrayBuffer();
+  const response = await fetch("/api/extract-pdf-text", {
+    method: "POST",
+    headers: { "content-type": "application/pdf" },
+    body: bytes,
+  });
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = body && typeof body.error === "string" ? body.error : `Request failed (${response.status})`;
+    throw new Error(message);
+  }
+  return body as PdfExtractionResult;
+}
+
 export function slugify(title: string): string {
   const base = title
     .toLowerCase()

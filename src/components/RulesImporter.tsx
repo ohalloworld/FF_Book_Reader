@@ -2,6 +2,7 @@ import { useState } from "react";
 import { parseRulesText, slugify } from "../engine/parseRulesApi";
 import { deleteRuleSet, listSavedRuleSets, saveRuleSet } from "../engine/storage";
 import type { RuleSet } from "../engine/types";
+import { PdfImportPanel } from "./PdfImportPanel";
 import { RuleSetSandbox } from "./RuleSetSandbox";
 import { RuleSetSummary } from "./RuleSetSummary";
 
@@ -52,6 +53,14 @@ export function RulesImporter() {
         sends the key to the browser.
       </p>
 
+      <h2 className="importer-subhead">From a PDF</h2>
+      <p className="muted">
+        Upload a book's PDF, pick the page range covering its rules section, and use the extracted text below. The
+        PDF is read entirely on your machine and is never uploaded anywhere else.
+      </p>
+      <PdfImportPanel onUseText={setRulesText} />
+
+      <h2 className="importer-subhead">Rules Text</h2>
       <textarea
         className="rules-textarea"
         placeholder="Paste the book's rules section here..."

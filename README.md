@@ -48,25 +48,41 @@ when you use the "Import Book Rules" screen.
   outputs, so parsing is reliable JSON, not free text — and your API key
   stays in this Node process and is never sent to the browser. Only active
   under `npm run dev`.
-- `src/components/RulesImporter.tsx` + `RuleSetSandbox.tsx` — paste a
-  book's rules text, parse it, review the extracted stats/tests/combat
-  rules, save it (to `localStorage`), and try it out immediately against a
-  sample monster without needing full story content.
+- `server/rulesApiPlugin.ts` also exposes `POST /api/extract-pdf-text`,
+  which reads an uploaded PDF's text per-page (via `pdf-parse`) entirely
+  in-memory on your machine — the PDF itself is never written to disk or
+  sent anywhere.
+- `src/components/RulesImporter.tsx` + `PdfImportPanel.tsx` +
+  `RuleSetSandbox.tsx` — upload a book's PDF (or paste text directly), pick
+  the page range covering its rules section, parse it, review the
+  extracted stats/tests/combat rules, save it (to `localStorage`), and try
+  it out immediately against a sample monster without needing full story
+  content.
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
 
 ## Importing a book's rules
 
-Open the "Import Book Rules" tab, paste the rules section from a book you
-own (stat generation, combat, Luck/Skill tests, starting equipment, any
-special mechanics), and click **Parse Rules**. Claude extracts a structured
-`RuleSet` — review it, save it, and use **Try it out** to roll a test
-character and fight a sample monster under those exact rules. Saved rule
-sets persist in your browser's `localStorage`.
+Open the "Import Book Rules" tab. Either:
+
+- **Upload a PDF** of a book you own. Rules and character-sheet
+  instructions are typically the first 10–15 pages, before the numbered
+  story sections start — pick a page range, check the preview shows rules
+  text (not story text), and click **Use this text**; or
+- **Paste the rules text** directly into the box.
+
+Then click **Parse Rules**. Claude extracts a structured `RuleSet` — review
+it, save it, and use **Try it out** to roll a test character and fight a
+sample monster under those exact rules. Saved rule sets persist in your
+browser's `localStorage`. The PDF and its text never leave your machine —
+extraction happens in the local dev server, and only the short rules text
+you approve gets sent to Claude for parsing.
 
 Note: this only extracts the *rules*, not a book's story text (which is
 copyrighted) — pairing an imported rule set with that book's actual section
-content is a separate step of writing your own `Gamebook` (see below).
+content is a separate step of writing your own `Gamebook` (see below). Keep
+any transcribed story content as local, `.gitignore`d files rather than
+committing it — even for personal use, that's real copyrighted text.
 
 ## Adding a new book
 

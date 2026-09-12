@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { PDFParse } from "pdf-parse";
 import type { Plugin } from "vite";
 import { RuleSetExtractionSchema } from "./ruleSetSchema.js";
 
@@ -13,12 +14,24 @@ const EXTRACTION_SYSTEM_PROMPT = `You extract structured game rules from the rul
 
 Use lowercase snake_case for machine keys. Base everything strictly on what the text actually says — don't invent mechanics it doesn't describe. If the text only covers part of the rules (e.g. no combat section), still fill in your best structural guess for the missing parts using standard Fighting Fantasy conventions (2D6 + SKILL combat, 2 STAMINA damage per lost round) and note the gap in specialRules.`;
 
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+const MAX_PDF_BYTES = 40 * 1024 * 1024; // 40MB — plenty for a scanned-text gamebook, cheap to cap
+
+async function readRawBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
   const chunks: Buffer[] = [];
+  let total = 0;
   for await (const chunk of req) {
-    chunks.push(chunk as Buffer);
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > maxBytes) {
+      throw Object.assign(new Error(`Body exceeds ${Math.round(maxBytes / 1024 / 1024)}MB limit`), { statusCode: 413 });
+    }
+    chunks.push(buf);
   }
-  const raw = Buffer.concat(chunks).toString("utf-8");
+  return Buffer.concat(chunks);
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  const raw = (await readRawBody(req, 5 * 1024 * 1024)).toString("utf-8");
   return raw ? JSON.parse(raw) : {};
 }
 
@@ -28,13 +41,52 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-/** Dev-only local API: POST /api/parse-rules { rulesText } -> { ruleSet }.
- * Runs entirely in this Node process, so ANTHROPIC_API_KEY never reaches
- * the browser. Only available under `npm run dev` (Vite dev middleware). */
+/** Dev-only local API, running entirely in this Node process so nothing —
+ * not the Anthropic API key, not the PDF you upload — leaves your machine
+ * except the extracted rules text you choose to send to Claude. Only
+ * available under `npm run dev` (Vite dev middleware). */
 export function rulesApiPlugin(): Plugin {
   return {
     name: "ff-rules-api",
     configureServer(server) {
+      server.middlewares.use("/api/extract-pdf-text", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        let parser: PDFParse | null = null;
+        try {
+          const pdfBytes = await readRawBody(req, MAX_PDF_BYTES);
+          if (pdfBytes.length === 0) {
+            sendJson(res, 400, { error: "No PDF data received." });
+            return;
+          }
+
+          parser = new PDFParse({ data: new Uint8Array(pdfBytes) });
+          const info = await parser.getInfo().catch(() => null);
+          const result = await parser.getText({ pageJoiner: "" });
+
+          const totalTextLength = result.pages.reduce((sum, p) => sum + p.text.trim().length, 0);
+          const warning =
+            result.total > 0 && totalTextLength / result.total < 20
+              ? "Very little text was found per page — this PDF may be scanned page images rather than real text, which this tool can't OCR. Try a text-based PDF, or transcribe the rules manually into the box below."
+              : undefined;
+
+          sendJson(res, 200, {
+            total: result.total,
+            title: info?.info?.Title || undefined,
+            pages: result.pages.map((p) => ({ num: p.num, text: p.text })),
+            warning,
+          });
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number })?.statusCode ?? 500;
+          sendJson(res, statusCode, { error: err instanceof Error ? err.message : "Failed to read PDF" });
+        } finally {
+          await parser?.destroy();
+        }
+      });
+
       server.middlewares.use("/api/parse-rules", async (req, res) => {
         if (req.method !== "POST") {
           sendJson(res, 405, { error: "Method not allowed" });
