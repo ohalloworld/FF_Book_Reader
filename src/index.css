@@ -1,0 +1,299 @@
+:root {
+  --text: #3a2f26;
+  --text-h: #1c1410;
+  --bg: #f6efe3;
+  --panel-bg: #fffaf0;
+  --border: #d8c9a8;
+  --accent: #8b1e1e;
+  --accent-bg: rgba(139, 30, 30, 0.08);
+  --accent-border: rgba(139, 30, 30, 0.4);
+  --bar-bg: #e6dcc4;
+  --bar-fill: #6f8f5c;
+  --bar-fill-low: #b0392b;
+  --shadow: rgba(0, 0, 0, 0.15) 0 6px 16px -4px;
+
+  --sans: 'Georgia', 'Iowan Old Style', serif;
+  --heading: 'Georgia', serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/155% var(--sans);
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #d8cdbb;
+    --text-h: #f3ead9;
+    --bg: #1b1712;
+    --panel-bg: #24201a;
+    --border: #3c3427;
+    --accent: #d9713f;
+    --accent-bg: rgba(217, 113, 63, 0.12);
+    --accent-border: rgba(217, 113, 63, 0.5);
+    --bar-bg: #35301f;
+    --bar-fill: #7fae63;
+    --bar-fill-low: #d9573f;
+    --shadow: rgba(0, 0, 0, 0.4) 0 6px 16px -4px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  max-width: 960px;
+  margin: 0 auto;
+  min-height: 100svh;
+  padding: 24px 16px 48px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--heading);
+  color: var(--text-h);
+  margin: 0 0 12px;
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+.muted {
+  color: var(--text);
+  opacity: 0.7;
+}
+
+/* Title screen */
+.title-screen {
+  max-width: 480px;
+  margin: 15vh auto 0;
+  text-align: center;
+}
+
+.title-screen form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.title-screen input {
+  font: inherit;
+  font-size: 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text-h);
+}
+
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Game shell */
+.game-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .game-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.character-sheet {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 24px;
+}
+
+.character-sheet h3 {
+  font-size: 15px;
+  margin-top: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.sheet-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.inventory-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+}
+
+.stat {
+  margin-bottom: 10px;
+}
+
+.stat-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bar-bg);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  background: var(--bar-fill);
+  transition: width 0.3s ease;
+}
+
+.stat-bar-fill.low {
+  background: var(--bar-fill-low);
+}
+
+.game-main {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.section-number {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-bottom: 14px;
+}
+
+.section-text {
+  font-size: 19px;
+  white-space: pre-line;
+}
+
+.luck-banner {
+  font-style: italic;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--accent-bg);
+}
+
+.ending {
+  font-size: 22px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.ending.victory {
+  color: var(--bar-fill);
+}
+
+.ending.death {
+  color: var(--bar-fill-low);
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.choice-button {
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  padding: 12px 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+
+.choice-button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.choice-button:active {
+  transform: scale(0.99);
+}
+
+.choice-button.secondary {
+  background: transparent;
+}
+
+.choice-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Combat */
+.combat-panel {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.monster-row {
+  margin-bottom: 14px;
+}
+
+.monster-row.defeated {
+  opacity: 0.5;
+}
+
+.monster-row .choice-button {
+  margin-top: 8px;
+  display: inline-block;
+}
+
+.combat-log {
+  font-style: italic;
+  margin-top: 12px;
+}
+
+.combat-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
