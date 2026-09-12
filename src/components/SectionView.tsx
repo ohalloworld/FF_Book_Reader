@@ -5,7 +5,14 @@ export function SectionView({ section, luckOutcome }: { section: Section; luckOu
   return (
     <div className="section-view">
       <div className="section-number">{section.id}</div>
-      <p className="section-text">{section.text}</p>
+      {section.text.trim() ? (
+        <p className="section-text">{section.text}</p>
+      ) : (
+        <p className="section-text muted">
+          No text saved for section {section.id} yet — read it from your book, then use the box below to keep
+          going.
+        </p>
+      )}
 
       {luckOutcome?.context === "general" && (
         <p className={"luck-banner" + (luckOutcome.success ? " success" : " failure")}>

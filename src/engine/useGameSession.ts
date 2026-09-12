@@ -24,6 +24,22 @@ export interface LuckOutcome {
   roll: number;
 }
 
+interface HistoryEntry {
+  sectionId: SectionId;
+  character: Character;
+}
+
+/** Used when jumping to a section number the Gamebook hasn't authored —
+ * lets the reader use this as a stat/combat companion alongside a real
+ * book's own numbered paragraphs, without needing every section digitized. */
+function blankSection(id: SectionId): Section {
+  return { id, text: "", choices: [] };
+}
+
+function lookupSection(book: Gamebook, id: SectionId): Section {
+  return book.sections[id] ?? blankSection(id);
+}
+
 function startCombat(section: Section, damageStat: string): CombatState | undefined {
   if (!section.encounter) return undefined;
   return {
@@ -41,9 +57,9 @@ export function useGameSession(book: Gamebook) {
   const [currentSectionId, setCurrentSectionId] = useState<SectionId>(book.startSection);
   const [combat, setCombat] = useState<CombatState | undefined>(undefined);
   const [lastLuckOutcome, setLastLuckOutcome] = useState<LuckOutcome | null>(null);
-  const [history, setHistory] = useState<SectionId[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  const currentSection = book.sections[currentSectionId];
+  const currentSection = character ? lookupSection(book, currentSectionId) : undefined;
 
   const persist = useCallback(
     (char: Character, sectionId: SectionId) => {
@@ -54,10 +70,7 @@ export function useGameSession(book: Gamebook) {
 
   const enterSection = useCallback(
     (sectionId: SectionId, char: Character) => {
-      const section = book.sections[sectionId];
-      if (!section) {
-        throw new Error(`Unknown section: ${sectionId}`);
-      }
+      const section = lookupSection(book, sectionId);
       const updated = cloneCharacter(char);
       applyEffects(updated, section.onEnter);
 
@@ -81,7 +94,7 @@ export function useGameSession(book: Gamebook) {
         }
         applyEffects(updated, section.test.effects);
         resolvedSectionId = result.success ? section.test.passGoTo : section.test.failGoTo;
-        resolvedSection = book.sections[resolvedSectionId];
+        resolvedSection = lookupSection(book, resolvedSectionId);
         setLastLuckOutcome({ context: "general", success: result.success, roll: result.roll });
       } else {
         setLastLuckOutcome(null);
@@ -90,10 +103,10 @@ export function useGameSession(book: Gamebook) {
       setCharacter(updated);
       setCurrentSectionId(resolvedSectionId);
       setCombat(startCombat(resolvedSection, ruleSet.combat.damageStat));
-      setHistory((h) => [...h, resolvedSectionId]);
+      setHistory((h) => [...h, { sectionId: resolvedSectionId, character: cloneCharacter(updated) }]);
       persist(updated, resolvedSectionId);
     },
-    [book.sections, persist, ruleSet],
+    [book, persist, ruleSet],
   );
 
   const startNewGame = useCallback(
@@ -109,12 +122,12 @@ export function useGameSession(book: Gamebook) {
   const resumeSavedGame = useCallback(() => {
     const save = loadGame(book.id);
     if (!save) return;
-    const section = book.sections[save.currentSectionId];
+    const section = lookupSection(book, save.currentSectionId);
     setCharacter(save.character);
     setCurrentSectionId(save.currentSectionId);
     setCombat(startCombat(section, ruleSet.combat.damageStat));
-    setHistory([save.currentSectionId]);
-  }, [book.id, book.sections, ruleSet]);
+    setHistory([{ sectionId: save.currentSectionId, character: save.character }]);
+  }, [book, ruleSet]);
 
   const choose = useCallback(
     (choice: Choice) => {
@@ -123,6 +136,37 @@ export function useGameSession(book: Gamebook) {
     },
     [character, enterSection],
   );
+
+  /** Jumps straight to a section number, same as clicking a choice that
+   * leads there — for skipping past a paragraph's choice buttons (or for
+   * paragraphs this Gamebook hasn't authored, since lookupSection falls
+   * back to a blank section rather than erroring). */
+  const goToParagraph = useCallback(
+    (id: string) => {
+      const trimmed = id.trim();
+      if (!character || !trimmed) return;
+      enterSection(trimmed, character);
+    },
+    [character, enterSection],
+  );
+
+  const canGoBack = history.length > 1;
+
+  /** Rewinds to the section+character state as it was just before the
+   * current one — a true undo, not a re-navigation, so it never re-rolls
+   * a test or re-applies an onEnter effect a second time. */
+  const goBack = useCallback(() => {
+    if (history.length <= 1) return;
+    const next = history.slice(0, -1);
+    const prevEntry = next[next.length - 1];
+    const prevSection = lookupSection(book, prevEntry.sectionId);
+    setCharacter(prevEntry.character);
+    setCurrentSectionId(prevEntry.sectionId);
+    setCombat(startCombat(prevSection, ruleSet.combat.damageStat));
+    setLastLuckOutcome(null);
+    setHistory(next);
+    persist(prevEntry.character, prevEntry.sectionId);
+  }, [history, book, persist, ruleSet]);
 
   const fightRound = useCallback(
     (monsterId: string) => {
@@ -243,6 +287,9 @@ export function useGameSession(book: Gamebook) {
     startNewGame,
     resumeSavedGame,
     choose,
+    goToParagraph,
+    canGoBack,
+    goBack,
     fightRound,
     fleeCombat,
     useLuckOnRound,

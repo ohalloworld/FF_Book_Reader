@@ -443,6 +443,40 @@ p {
   cursor: not-allowed;
 }
 
+.paragraph-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.paragraph-jump {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.paragraph-jump label {
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.paragraph-jump input {
+  width: 90px;
+  font: inherit;
+  font-size: 15px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
 /* Combat */
 .combat-panel {
   margin-top: 20px;

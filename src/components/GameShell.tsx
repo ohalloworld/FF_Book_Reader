@@ -3,6 +3,7 @@ import type { Gamebook } from "../engine/types";
 import { CharacterSheet } from "./CharacterSheet";
 import { ChoiceList } from "./ChoiceList";
 import { CombatPanel } from "./CombatPanel";
+import { ParagraphNav } from "./ParagraphNav";
 import { SectionView } from "./SectionView";
 import { TitleScreen } from "./TitleScreen";
 
@@ -47,6 +48,12 @@ export function GameShell({ book }: { book: Gamebook }) {
             Start a new adventure
           </button>
         )}
+
+        <ParagraphNav
+          onGoToParagraph={session.goToParagraph}
+          onGoBack={session.goBack}
+          canGoBack={session.canGoBack}
+        />
       </main>
     </div>
   );

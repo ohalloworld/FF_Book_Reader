@@ -11,6 +11,15 @@ story graph format lets you plug in your own (or your own original)
 gamebook content. `src/data/testBook.ts` is a small original demo book
 used to exercise every engine feature.
 
+Since a real book's numbered sections likely aren't digitized here, the
+reader also works as a **companion** alongside your physical/PDF book: a
+"Go to paragraph" box jumps straight to any section number — if that
+section isn't authored in the `Gamebook`, it shows a blank placeholder
+instead of erroring, so you can still track your character sheet, combat,
+and dice tests while reading the real text yourself. A **Previous** button
+does a true undo (restores character state as it was, not just the section
+text), including unwinding a dice test or mid-fight damage.
+
 ## Running it locally
 
 ```bash
