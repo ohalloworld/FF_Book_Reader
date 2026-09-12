@@ -1,41 +1,94 @@
 // Core data model for a gamebook. A "Gamebook" is a graph of numbered
-// Sections (matching the original books' numbered paragraphs). The reader
-// UI walks this graph one Section at a time; the GameState carries
-// character stats, inventory, and story flags between sections.
+// Sections (matching the original books' numbered paragraphs), paired with
+// a RuleSet describing that book's specific character sheet and mechanics
+// (every Fighting Fantasy book varied these to some degree — some added
+// stats like Fear or Magic Points, changed combat math, etc). The reader
+// UI walks the Section graph one at a time; the GameState carries a
+// dynamically-shaped character (driven by the RuleSet) between sections.
 
 export type SectionId = string;
 
-export interface StatBlock {
-  initial: number;
+/** A dice expression like "1D6+6", "2D6", "3D6-2", or a flat "0". */
+export type DiceFormula = string;
+
+export type StatKind = "pool" | "counter";
+
+/** Defines one entry on the character sheet. "pool" stats (SKILL, STAMINA,
+ * LUCK, Magic Points, Fear...) have a current/initial value and a bar.
+ * "counter" stats (Gold, Provisions...) are a flat number with no cap. */
+export interface StatDefinition {
+  key: string;
+  label: string;
+  kind: StatKind;
+  /** How the starting value is generated, e.g. "1D6+6" or a fixed "12". */
+  generation: DiceFormula;
+  min?: number;
+}
+
+export type TestSuccessRule = "lte" | "gte";
+
+/** An automatic dice test, e.g. "Test your Luck" or "Test your Skill". */
+export interface TestDefinition {
+  key: string;
+  label: string;
+  statKey: string;
+  rollFormula: DiceFormula;
+  /** "lte" = success when roll <= stat (standard FF Luck/Skill tests). */
+  successWhen: TestSuccessRule;
+  /** How much the tested stat drops each time it's used, win or lose. */
+  decrementStatOnUse?: number;
+}
+
+/** This book's combat resolution rule. Standard FF: both sides roll 2D6,
+ * add SKILL for an Attack Strength; the loser's STAMINA drops by 2. */
+export interface CombatRules {
+  rollFormula: DiceFormula;
+  attackStat: string;
+  damageStat: string;
+  damagePerHit: number;
+  /** Optional "Test your Luck" after landing/taking a blow, e.g. LUCK. */
+  luckTestKey?: string;
+  luckExtraDamage?: number;
+}
+
+export interface RuleSet {
+  id: string;
+  bookTitle: string;
+  stats: StatDefinition[];
+  tests: TestDefinition[];
+  combat: CombatRules;
+  startingInventory?: string[];
+  /** Rules the parser found but couldn't model structurally (special items,
+   * unique per-book mechanics) — shown to the reader as reference text. */
+  specialRules: string[];
+  /** How this RuleSet came to be, for the user's own reference. */
+  source: "standard" | "imported";
+}
+
+export interface StatValue {
   current: number;
+  initial: number;
 }
 
 export interface Character {
   name: string;
-  skill: StatBlock;
-  stamina: StatBlock;
-  luck: StatBlock;
-  gold: number;
-  provisions: number;
+  pools: Record<string, StatValue>;
+  counters: Record<string, number>;
   inventory: string[];
   flags: Record<string, boolean | number>;
 }
 
+/** A monster's stats keyed the same way as the RuleSet's combat.attackStat
+ * / combat.damageStat, so combat resolution stays rule-set agnostic. */
 export interface Monster {
   id: string;
   name: string;
-  skill: number;
-  stamina: number;
+  stats: Record<string, number>;
 }
 
-/** A single combat encounter attached to a section. Player fights monsters
- * in order; the section can't be left via its choices until resolved
- * (unless a choice explicitly allows fleeing). */
 export interface Encounter {
   monsters: Monster[];
-  /** Section to go to if the player is defeated (stamina hits 0). */
   onDefeatGoTo?: SectionId;
-  /** If set, a "flee" option is offered mid-combat, going to this section. */
   fleeGoTo?: SectionId;
 }
 
@@ -43,7 +96,15 @@ export type Condition =
   | { type: "hasItem"; item: string }
   | { type: "notHasItem"; item: string }
   | { type: "flag"; key: string; equals: boolean | number }
-  | { type: "statAtLeast"; stat: "skill" | "stamina" | "luck" | "gold"; value: number };
+  | { type: "poolAtLeast"; stat: string; value: number }
+  | { type: "counterAtLeast"; stat: string; value: number };
+
+export type Effect =
+  | { type: "addItem"; item: string }
+  | { type: "removeItem"; item: string }
+  | { type: "setFlag"; key: string; value: boolean | number }
+  | { type: "adjustPool"; stat: string; delta: number }
+  | { type: "adjustCounter"; stat: string; delta: number };
 
 export interface Choice {
   text: string;
@@ -51,29 +112,20 @@ export interface Choice {
   condition?: Condition;
 }
 
-export type Effect =
-  | { type: "addItem"; item: string }
-  | { type: "removeItem"; item: string }
-  | { type: "setFlag"; key: string; value: boolean | number }
-  | { type: "adjustStat"; stat: "skill" | "stamina" | "luck" | "gold" | "provisions"; delta: number };
-
-/** An automatic dice test resolved on arrival, branching by pass/fail.
- * Models FF's "Test your Luck/Skill" paragraphs. */
-export interface Test {
-  type: "luck" | "skill";
+/** References a RuleSet TestDefinition by key and branches on the result. */
+export interface SectionTest {
+  testKey: string;
   passGoTo: SectionId;
   failGoTo: SectionId;
-  /** Effects applied regardless of outcome (e.g. luck always ticks down). */
   effects?: Effect[];
 }
 
 export interface Section {
   id: SectionId;
   text: string;
-  /** Effects applied once, the moment this section is entered. */
   onEnter?: Effect[];
   encounter?: Encounter;
-  test?: Test;
+  test?: SectionTest;
   choices: Choice[];
   ending?: "victory" | "death";
 }
@@ -83,5 +135,6 @@ export interface Gamebook {
   title: string;
   author: string;
   startSection: SectionId;
+  ruleSet: RuleSet;
   sections: Record<SectionId, Section>;
 }

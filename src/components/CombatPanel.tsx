@@ -1,31 +1,37 @@
+import type { RuleSet } from "../engine/types";
 import type { CombatState, LuckOutcomeContext } from "../engine/useGameSession";
 
 interface CombatPanelProps {
   combat: CombatState;
+  ruleSet: RuleSet;
   onFight: (monsterId: string) => void;
   onFlee: () => void;
   onUseLuck: (context: LuckOutcomeContext) => void;
 }
 
-export function CombatPanel({ combat, onFight, onFlee, onUseLuck }: CombatPanelProps) {
+export function CombatPanel({ combat, ruleSet, onFight, onFlee, onUseLuck }: CombatPanelProps) {
   const { lastRound } = combat;
   const luckContext: LuckOutcomeContext | null =
     lastRound?.outcome === "player" ? "combat-damage" : lastRound?.outcome === "monster" ? "combat-heal" : null;
+
+  const attackStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.attackStat);
+  const attackLabel = attackStat?.label ?? ruleSet.combat.attackStat;
 
   return (
     <div className="combat-panel">
       <h3>Combat</h3>
       {combat.monsters.map((monster) => {
-        const defeated = monster.currentStamina <= 0;
-        const pct = Math.max(0, Math.round((monster.currentStamina / monster.stamina) * 100));
+        const defeated = monster.currentDamageStat <= 0;
+        const maxDamageStat = monster.stats[ruleSet.combat.damageStat] || 1;
+        const pct = Math.max(0, Math.round((monster.currentDamageStat / maxDamageStat) * 100));
         return (
           <div key={monster.id} className={"monster-row" + (defeated ? " defeated" : "")}>
             <div className="stat-label">
               <span>
-                {monster.name} (SKILL {monster.skill})
+                {monster.name} ({attackLabel} {monster.stats[ruleSet.combat.attackStat] ?? 0})
               </span>
               <span className="stat-value">
-                {defeated ? "Defeated" : `${monster.currentStamina} / ${monster.stamina}`}
+                {defeated ? "Defeated" : `${monster.currentDamageStat} / ${maxDamageStat}`}
               </span>
             </div>
             <div className="stat-bar">
@@ -50,7 +56,7 @@ export function CombatPanel({ combat, onFight, onFlee, onUseLuck }: CombatPanelP
       )}
 
       <div className="combat-actions">
-        {luckContext && (
+        {luckContext && ruleSet.combat.luckTestKey && (
           <button
             type="button"
             className="choice-button secondary"

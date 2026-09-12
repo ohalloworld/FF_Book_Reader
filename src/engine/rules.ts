@@ -1,4 +1,31 @@
-import type { Character, Choice, Condition, Effect } from "./types";
+import { rollFormula } from "./dice";
+import type { Character, Choice, Condition, Effect, RuleSet } from "./types";
+
+export function generateCharacter(ruleSet: RuleSet, name: string): Character {
+  const character: Character = { name, pools: {}, counters: {}, inventory: [], flags: {} };
+  for (const stat of ruleSet.stats) {
+    const value = rollFormula(stat.generation);
+    if (stat.kind === "pool") {
+      character.pools[stat.key] = { current: value, initial: value };
+    } else {
+      character.counters[stat.key] = value;
+    }
+  }
+  if (ruleSet.startingInventory) {
+    character.inventory = [...ruleSet.startingInventory];
+  }
+  return character;
+}
+
+export function cloneCharacter(character: Character): Character {
+  return {
+    ...character,
+    pools: Object.fromEntries(Object.entries(character.pools).map(([k, v]) => [k, { ...v }])),
+    counters: { ...character.counters },
+    inventory: [...character.inventory],
+    flags: { ...character.flags },
+  };
+}
 
 export function checkCondition(character: Character, condition: Condition): boolean {
   switch (condition.type) {
@@ -8,10 +35,10 @@ export function checkCondition(character: Character, condition: Condition): bool
       return !character.inventory.includes(condition.item);
     case "flag":
       return (character.flags[condition.key] ?? false) === condition.equals;
-    case "statAtLeast": {
-      const value = condition.stat === "gold" ? character.gold : character[condition.stat].current;
-      return value >= condition.value;
-    }
+    case "poolAtLeast":
+      return (character.pools[condition.stat]?.current ?? 0) >= condition.value;
+    case "counterAtLeast":
+      return (character.counters[condition.stat] ?? 0) >= condition.value;
   }
 }
 
@@ -19,8 +46,7 @@ export function availableChoices(character: Character, choices: Choice[]): Choic
   return choices.filter((c) => !c.condition || checkCondition(character, c.condition));
 }
 
-/** Applies an effect in place and returns the same character for chaining. */
-export function applyEffect(character: Character, effect: Effect): Character {
+export function applyEffect(character: Character, effect: Effect): void {
   switch (effect.type) {
     case "addItem":
       if (!character.inventory.includes(effect.item)) {
@@ -33,25 +59,26 @@ export function applyEffect(character: Character, effect: Effect): Character {
     case "setFlag":
       character.flags = { ...character.flags, [effect.key]: effect.value };
       break;
-    case "adjustStat": {
-      if (effect.stat === "gold" || effect.stat === "provisions") {
-        character[effect.stat] = Math.max(0, character[effect.stat] + effect.delta);
-      } else {
-        const block = character[effect.stat];
-        const next = Math.min(block.initial, Math.max(0, block.current + effect.delta));
-        character[effect.stat] = { ...block, current: next };
-      }
+    case "adjustPool": {
+      const block = character.pools[effect.stat];
+      if (!block) break;
+      const next = Math.min(block.initial, Math.max(0, block.current + effect.delta));
+      character.pools = { ...character.pools, [effect.stat]: { ...block, current: next } };
+      break;
+    }
+    case "adjustCounter": {
+      const current = character.counters[effect.stat] ?? 0;
+      character.counters = { ...character.counters, [effect.stat]: Math.max(0, current + effect.delta) };
       break;
     }
   }
-  return character;
 }
 
-export function applyEffects(character: Character, effects: Effect[] | undefined): Character {
-  if (!effects) return character;
-  return effects.reduce((c, e) => applyEffect(c, e), character);
+export function applyEffects(character: Character, effects: Effect[] | undefined): void {
+  if (!effects) return;
+  for (const effect of effects) applyEffect(character, effect);
 }
 
-export function isAlive(character: Character): boolean {
-  return character.stamina.current > 0;
+export function isAlive(character: Character, ruleSet: RuleSet): boolean {
+  return (character.pools[ruleSet.combat.damageStat]?.current ?? 1) > 0;
 }

@@ -1,3 +1,4 @@
+import { standardRuleSet } from "../engine/standardRuleSet";
 import type { Gamebook } from "../engine/types";
 
 // Original demo content written to exercise the engine end to end
@@ -8,6 +9,7 @@ export const testBook: Gamebook = {
   title: "The Crypt of Embers",
   author: "Engine Demo",
   startSection: "1",
+  ruleSet: standardRuleSet,
   sections: {
     "1": {
       id: "1",
@@ -50,18 +52,14 @@ old lock.`,
       text: `The key turns with a groan. Beyond the grate, a chest sits untouched —
 plainly missed by whoever else has passed this way. You take a handful of
 gold before heading toward the glow you saw earlier.`,
-      onEnter: [{ type: "adjustStat", stat: "gold", delta: 15 }],
+      onEnter: [{ type: "adjustCounter", stat: "gold", delta: 15 }],
       choices: [{ text: "Head toward the glow.", to: "6" }],
     },
     "6": {
       id: "6",
       text: `You edge along a ledge above a sunken chamber. The stone crumbles
 underfoot. Test your luck to keep your footing.`,
-      test: {
-        type: "luck",
-        passGoTo: "7",
-        failGoTo: "8",
-      },
+      test: { testKey: "luck", passGoTo: "7", failGoTo: "8" },
       choices: [],
     },
     "7": {
@@ -74,7 +72,7 @@ dropping down into the chamber ahead.`,
       id: "8",
       text: `Your footing gives way and you fall hard into the chamber below,
 bruised and winded.`,
-      onEnter: [{ type: "adjustStat", stat: "stamina", delta: -3 }],
+      onEnter: [{ type: "adjustPool", stat: "stamina", delta: -3 }],
       choices: [{ text: "Pick yourself up.", to: "9" }],
     },
     "9": {
@@ -82,7 +80,7 @@ bruised and winded.`,
       text: `A FIRE-DEMON uncoils from a bed of embers, eyes blazing. There is
 nowhere left to run but the passage behind you.`,
       encounter: {
-        monsters: [{ id: "fire-demon", name: "Fire-Demon", skill: 9, stamina: 12 }],
+        monsters: [{ id: "fire-demon", name: "Fire-Demon", stats: { skill: 9, stamina: 12 } }],
         fleeGoTo: "10",
         onDefeatGoTo: "10",
       },
@@ -101,7 +99,7 @@ Whatever gold it guarded, it isn't worth your life.`,
 where it slept, the promised hoard of gold glitters in the firelight. You
 have won through the Crypt of Embers.`,
       ending: "victory",
-      onEnter: [{ type: "adjustStat", stat: "gold", delta: 50 }],
+      onEnter: [{ type: "adjustCounter", stat: "gold", delta: 50 }],
       choices: [],
     },
   },

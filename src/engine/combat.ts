@@ -1,5 +1,5 @@
-import { sumDice } from "./dice";
-import type { Character, Monster } from "./types";
+import { rollFormula } from "./dice";
+import type { Character, CombatRules, Monster, RuleSet, TestDefinition } from "./types";
 
 export interface CombatRoundResult {
   monsterId: string;
@@ -12,16 +12,18 @@ export interface CombatRoundResult {
   damageTaken: number;
 }
 
-const DEFAULT_DAMAGE = 2;
-
 /** Resolves one round of combat between the player and a single monster,
- * following the standard FF rule: both sides roll 2d6 and add SKILL to get
- * an Attack Strength; the lower side takes damage (a draw does nothing). */
-export function resolveCombatRound(character: Character, monster: Monster): CombatRoundResult {
-  const playerRoll = sumDice(2);
-  const monsterRoll = sumDice(2);
-  const playerAttackStrength = playerRoll + character.skill.current;
-  const monsterAttackStrength = monsterRoll + monster.skill;
+ * driven entirely by the book's own CombatRules (both sides roll the same
+ * formula, add their attackStat, and the loser's damageStat drops). */
+export function resolveCombatRound(
+  character: Character,
+  monster: Monster,
+  combat: CombatRules,
+): CombatRoundResult {
+  const playerRoll = rollFormula(combat.rollFormula);
+  const monsterRoll = rollFormula(combat.rollFormula);
+  const playerAttackStrength = playerRoll + (character.pools[combat.attackStat]?.current ?? 0);
+  const monsterAttackStrength = monsterRoll + (monster.stats[combat.attackStat] ?? 0);
 
   let outcome: CombatRoundResult["outcome"] = "draw";
   let damageDealt = 0;
@@ -29,10 +31,10 @@ export function resolveCombatRound(character: Character, monster: Monster): Comb
 
   if (playerAttackStrength > monsterAttackStrength) {
     outcome = "player";
-    damageDealt = DEFAULT_DAMAGE;
+    damageDealt = combat.damagePerHit;
   } else if (monsterAttackStrength > playerAttackStrength) {
     outcome = "monster";
-    damageTaken = DEFAULT_DAMAGE;
+    damageTaken = combat.damagePerHit;
   }
 
   return {
@@ -47,14 +49,13 @@ export function resolveCombatRound(character: Character, monster: Monster): Comb
   };
 }
 
-export function testLuck(character: Character): { success: boolean; roll: number } {
-  const roll = sumDice(2);
-  const success = roll <= character.luck.current;
+export function resolveTest(character: Character, test: TestDefinition): { success: boolean; roll: number } {
+  const roll = rollFormula(test.rollFormula);
+  const stat = character.pools[test.statKey]?.current ?? 0;
+  const success = test.successWhen === "lte" ? roll <= stat : roll >= stat;
   return { success, roll };
 }
 
-export function testSkill(character: Character): { success: boolean; roll: number } {
-  const roll = sumDice(2);
-  const success = roll <= character.skill.current;
-  return { success, roll };
+export function findTest(ruleSet: RuleSet, key: string): TestDefinition | undefined {
+  return ruleSet.tests.find((t) => t.key === key);
 }

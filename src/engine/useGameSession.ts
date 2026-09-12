@@ -1,12 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { resolveCombatRound, testLuck, testSkill, type CombatRoundResult } from "./combat";
-import { generateStats } from "./dice";
-import { applyEffects, availableChoices, isAlive } from "./rules";
+import { findTest, resolveCombatRound, resolveTest, type CombatRoundResult } from "./combat";
+import { applyEffects, availableChoices, cloneCharacter, generateCharacter, isAlive } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
 import type { Character, Choice, Gamebook, Monster, Section, SectionId } from "./types";
 
 export interface CombatMonsterState extends Monster {
-  currentStamina: number;
+  currentDamageStat: number;
 }
 
 export interface CombatState {
@@ -25,41 +24,17 @@ export interface LuckOutcome {
   roll: number;
 }
 
-function freshCharacter(name: string): Character {
-  const stats = generateStats();
-  return {
-    name,
-    skill: { initial: stats.skill, current: stats.skill },
-    stamina: { initial: stats.stamina, current: stats.stamina },
-    luck: { initial: stats.luck, current: stats.luck },
-    gold: 0,
-    provisions: 10,
-    inventory: [],
-    flags: {},
-  };
-}
-
-function cloneCharacter(character: Character): Character {
-  return {
-    ...character,
-    skill: { ...character.skill },
-    stamina: { ...character.stamina },
-    luck: { ...character.luck },
-    inventory: [...character.inventory],
-    flags: { ...character.flags },
-  };
-}
-
-function startCombat(section: Section): CombatState | undefined {
+function startCombat(section: Section, damageStat: string): CombatState | undefined {
   if (!section.encounter) return undefined;
   return {
-    monsters: section.encounter.monsters.map((m) => ({ ...m, currentStamina: m.stamina })),
+    monsters: section.encounter.monsters.map((m) => ({ ...m, currentDamageStat: m.stats[damageStat] ?? 0 })),
     fleeGoTo: section.encounter.fleeGoTo,
     onDefeatGoTo: section.encounter.onDefeatGoTo,
   };
 }
 
 export function useGameSession(book: Gamebook) {
+  const ruleSet = book.ruleSet;
   const hasSave = useMemo(() => loadGame(book.id) !== null, [book.id]);
 
   const [character, setCharacter] = useState<Character | null>(null);
@@ -89,38 +64,46 @@ export function useGameSession(book: Gamebook) {
       let resolvedSectionId = sectionId;
       let resolvedSection = section;
 
-      // Auto-resolve a dice test on arrival (e.g. "Test your Luck").
       if (section.test) {
-        const result = section.test.type === "luck" ? testLuck(updated) : testSkill(updated);
+        const test = findTest(ruleSet, section.test.testKey);
+        if (!test) {
+          throw new Error(`Unknown test: ${section.test.testKey}`);
+        }
+        const result = resolveTest(updated, test);
+        if (test.decrementStatOnUse) {
+          const block = updated.pools[test.statKey];
+          if (block) {
+            updated.pools = {
+              ...updated.pools,
+              [test.statKey]: { ...block, current: Math.max(0, block.current - test.decrementStatOnUse) },
+            };
+          }
+        }
         applyEffects(updated, section.test.effects);
         resolvedSectionId = result.success ? section.test.passGoTo : section.test.failGoTo;
         resolvedSection = book.sections[resolvedSectionId];
-        setLastLuckOutcome({
-          context: "general",
-          success: result.success,
-          roll: result.roll,
-        });
+        setLastLuckOutcome({ context: "general", success: result.success, roll: result.roll });
       } else {
         setLastLuckOutcome(null);
       }
 
       setCharacter(updated);
       setCurrentSectionId(resolvedSectionId);
-      setCombat(startCombat(resolvedSection));
+      setCombat(startCombat(resolvedSection, ruleSet.combat.damageStat));
       setHistory((h) => [...h, resolvedSectionId]);
       persist(updated, resolvedSectionId);
     },
-    [book.sections, persist],
+    [book.sections, persist, ruleSet],
   );
 
   const startNewGame = useCallback(
     (name: string) => {
-      const char = freshCharacter(name || "Adventurer");
+      const char = generateCharacter(ruleSet, name || "Adventurer");
       clearGame(book.id);
       setHistory([]);
       enterSection(book.startSection, char);
     },
-    [book.id, book.startSection, enterSection],
+    [book.id, book.startSection, enterSection, ruleSet],
   );
 
   const resumeSavedGame = useCallback(() => {
@@ -129,9 +112,9 @@ export function useGameSession(book: Gamebook) {
     const section = book.sections[save.currentSectionId];
     setCharacter(save.character);
     setCurrentSectionId(save.currentSectionId);
-    setCombat(startCombat(section));
+    setCombat(startCombat(section, ruleSet.combat.damageStat));
     setHistory([save.currentSectionId]);
-  }, [book.id, book.sections]);
+  }, [book.id, book.sections, ruleSet]);
 
   const choose = useCallback(
     (choice: Choice) => {
@@ -145,15 +128,24 @@ export function useGameSession(book: Gamebook) {
     (monsterId: string) => {
       if (!character || !combat) return;
       const monster = combat.monsters.find((m) => m.id === monsterId);
-      if (!monster || monster.currentStamina <= 0) return;
+      if (!monster || monster.currentDamageStat <= 0) return;
 
-      const result = resolveCombatRound(character, monster);
+      const result = resolveCombatRound(character, monster, ruleSet.combat);
       const updatedChar = cloneCharacter(character);
-      updatedChar.stamina.current = Math.max(0, updatedChar.stamina.current - result.damageTaken);
+      const playerBlock = updatedChar.pools[ruleSet.combat.damageStat];
+      if (playerBlock) {
+        updatedChar.pools = {
+          ...updatedChar.pools,
+          [ruleSet.combat.damageStat]: {
+            ...playerBlock,
+            current: Math.max(0, playerBlock.current - result.damageTaken),
+          },
+        };
+      }
 
       const updatedMonsters = combat.monsters.map((m) =>
         m.id === monsterId
-          ? { ...m, currentStamina: Math.max(0, m.currentStamina - result.damageDealt) }
+          ? { ...m, currentDamageStat: Math.max(0, m.currentDamageStat - result.damageDealt) }
           : m,
       );
 
@@ -161,11 +153,11 @@ export function useGameSession(book: Gamebook) {
       setCombat({ ...combat, monsters: updatedMonsters, lastRound: result, luckUsedThisRound: false });
       persist(updatedChar, currentSectionId);
 
-      if (!isAlive(updatedChar) && combat.onDefeatGoTo) {
+      if (!isAlive(updatedChar, ruleSet) && combat.onDefeatGoTo) {
         enterSection(combat.onDefeatGoTo, updatedChar);
       }
     },
-    [character, combat, currentSectionId, enterSection, persist],
+    [character, combat, currentSectionId, enterSection, persist, ruleSet],
   );
 
   const fleeCombat = useCallback(() => {
@@ -176,21 +168,43 @@ export function useGameSession(book: Gamebook) {
   const useLuckOnRound = useCallback(
     (context: LuckOutcomeContext) => {
       if (!character || !combat?.lastRound || combat.luckUsedThisRound) return;
-      const { success, roll } = testLuck(character);
-      const updated = cloneCharacter(character);
-      updated.luck.current = Math.max(0, updated.luck.current - 1);
+      const luckTestKey = ruleSet.combat.luckTestKey;
+      if (!luckTestKey) return;
+      const test = findTest(ruleSet, luckTestKey);
+      if (!test) return;
 
+      const { success, roll } = resolveTest(character, test);
+      const updated = cloneCharacter(character);
+      if (test.decrementStatOnUse) {
+        const block = updated.pools[test.statKey];
+        if (block) {
+          updated.pools = {
+            ...updated.pools,
+            [test.statKey]: { ...block, current: Math.max(0, block.current - test.decrementStatOnUse) },
+          };
+        }
+      }
+
+      const extra = ruleSet.combat.luckExtraDamage ?? 1;
       const round = combat.lastRound;
       let monsters = combat.monsters;
       if (round.outcome === "player") {
-        // Lucky doubles the extra damage; unlucky halves it back.
-        const extra = success ? 1 : -1;
+        const adjust = success ? extra : -extra;
         monsters = monsters.map((m) =>
-          m.id === round.monsterId ? { ...m, currentStamina: Math.max(0, m.currentStamina - extra) } : m,
+          m.id === round.monsterId ? { ...m, currentDamageStat: Math.max(0, m.currentDamageStat - adjust) } : m,
         );
       } else if (round.outcome === "monster") {
-        const relief = success ? 1 : -1;
-        updated.stamina.current = Math.min(updated.stamina.initial, Math.max(0, updated.stamina.current + relief));
+        const relief = success ? extra : -extra;
+        const block = updated.pools[ruleSet.combat.damageStat];
+        if (block) {
+          updated.pools = {
+            ...updated.pools,
+            [ruleSet.combat.damageStat]: {
+              ...block,
+              current: Math.min(block.initial, Math.max(0, block.current + relief)),
+            },
+          };
+        }
       }
 
       setCharacter(updated);
@@ -198,7 +212,7 @@ export function useGameSession(book: Gamebook) {
       setLastLuckOutcome({ context, success, roll });
       persist(updated, currentSectionId);
     },
-    [character, combat, currentSectionId, persist],
+    [character, combat, currentSectionId, persist, ruleSet],
   );
 
   const restart = useCallback(() => {
@@ -214,9 +228,10 @@ export function useGameSession(book: Gamebook) {
     [character, currentSection],
   );
 
-  const combatResolved = combat ? combat.monsters.every((m) => m.currentStamina <= 0) : true;
+  const combatResolved = combat ? combat.monsters.every((m) => m.currentDamageStat <= 0) : true;
 
   return {
+    ruleSet,
     character,
     currentSection,
     choices,
@@ -232,6 +247,6 @@ export function useGameSession(book: Gamebook) {
     fleeCombat,
     useLuckOnRound,
     restart,
-    isAlive: character ? isAlive(character) : true,
+    isAlive: character ? isAlive(character, ruleSet) : true,
   };
 }

@@ -26,13 +26,14 @@ export function GameShell({ book }: { book: Gamebook }) {
 
   return (
     <div className="game-shell">
-      <CharacterSheet character={character} />
+      <CharacterSheet character={character} ruleSet={session.ruleSet} />
       <main className="game-main">
         <SectionView section={currentSection} luckOutcome={session.lastLuckOutcome} />
 
         {showCombat && session.combat && (
           <CombatPanel
             combat={session.combat}
+            ruleSet={session.ruleSet}
             onFight={session.fightRound}
             onFlee={session.fleeCombat}
             onUseLuck={session.useLuckOnRound}
