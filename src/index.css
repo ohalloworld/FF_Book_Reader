@@ -164,7 +164,7 @@ p {
 .library-create-form input,
 .library-create-form select {
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -273,7 +273,7 @@ p {
 .rules-textarea {
   width: 100%;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   padding: 12px;
   border: 1px solid var(--border);
@@ -350,7 +350,7 @@ p {
 
 .saved-ruleset-row .ruleset-name-input {
   margin-top: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: normal;
   flex: 1;
 }
@@ -688,7 +688,7 @@ p {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 5px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -714,9 +714,9 @@ p {
 }
 
 .stat-adjuster input {
-  width: 44px;
+  width: 48px;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   padding: 2px 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -923,7 +923,7 @@ p {
 
 .section-edit-choice input {
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -949,7 +949,7 @@ p {
 .transcribe-prompt-form input {
   width: 140px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -994,7 +994,7 @@ p {
 .pdf-browser-jump input {
   width: 90px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1059,9 +1059,9 @@ p {
 }
 
 .dice-roller-count {
-  width: 56px;
+  width: 60px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1098,7 +1098,7 @@ p {
 
 .companion-combat-form input {
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1132,7 +1132,7 @@ p {
 .paragraph-jump input {
   width: 90px;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
