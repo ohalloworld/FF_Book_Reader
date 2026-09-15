@@ -79,8 +79,11 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
 - `src/engine/dice.ts` — parses dice formulas like `"1D6+6"` and rolls them.
 - `src/engine/combat.ts` / `rules.ts` — generic combat resolution and
   condition/effect evaluation, both driven entirely by the active `RuleSet`.
-- `src/engine/useGameSession.ts` — the reader's state machine: character
-  creation, navigating sections, resolving tests/combat, save/resume.
+- `src/engine/useGameSession.ts` — the reader's state machine: navigating
+  sections, resolving tests/combat, save/resume.
+  `startNewGameWithCharacter` takes an already-rolled `Character` (see
+  `CharacterRoll.tsx` below) rather than rolling one itself, so the reveal
+  screen and the actual game state always agree on what was rolled.
 - `src/engine/parseRulesApi.ts` — client for the local rules-parsing
   endpoint.
 - `server/rulesApiPlugin.ts` — a Vite dev-server middleware plugin exposing
@@ -153,6 +156,19 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   `CharacterSheet.tsx` takes an optional `actions` prop for the inline
   stat/inventory edit controls (omitted in the rules-sandbox, where the
   sheet stays read-only).
+- **Reading-first layout:** the full `CharacterSheet` isn't part of the
+  normal play view anymore — `StatBar.tsx` shows a slim sticky strip of
+  just the pool stats (SKILL/STAMINA/LUCK-equivalents) above the story, and
+  tapping it opens the full sheet (inventory, counters, edit actions) in
+  `CharacterDrawer.tsx`, a slide-in panel (from the right on desktop, up
+  from the bottom on mobile) that closes on Escape or a backdrop click. The
+  story paragraph stays the visual focus instead of competing with an
+  always-on sidebar.
+- **Rolling a character is a visible step**, matching the books' own
+  ritual of rolling your Adventure Sheet before the story starts:
+  `CharacterRoll.tsx` shows each stat as it's rolled (with its dice
+  formula, e.g. `1D6+6`) and lets you **Reroll** before committing, instead
+  of generating silently the instant you click Begin.
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
 - `vite.config.ts` — `server.host: true` (LAN access for phones) and

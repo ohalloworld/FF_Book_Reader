@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { findTest, resolveCombatRound, resolveTest, type CombatRoundResult } from "./combat";
-import { applyEffect, applyEffects, availableChoices, cloneCharacter, generateCharacter, isAlive } from "./rules";
+import { applyEffect, applyEffects, availableChoices, cloneCharacter, isAlive } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
 import type { Character, Choice, Gamebook, Monster, Section, SectionId } from "./types";
 
@@ -112,14 +112,17 @@ export function useGameSession(book: Gamebook) {
     [book, persist, ruleSet],
   );
 
-  const startNewGame = useCallback(
-    (name: string) => {
-      const char = generateCharacter(ruleSet, name || "Adventurer");
+  /** Starts a new game with an already-rolled character — the caller
+   * rolls (and lets the player reroll) via engine/rules.generateCharacter
+   * before calling this, so the reveal screen and the actual game state
+   * always agree on the stats rolled. */
+  const startNewGameWithCharacter = useCallback(
+    (char: Character) => {
       clearGame(book.id);
       setHistory([]);
       enterSection(book.startSection, char);
     },
-    [book.id, book.startSection, enterSection, ruleSet],
+    [book.id, book.startSection, enterSection],
   );
 
   const resumeSavedGame = useCallback(() => {
@@ -389,7 +392,7 @@ export function useGameSession(book: Gamebook) {
     lastLuckOutcome,
     history,
     hasSave,
-    startNewGame,
+    startNewGameWithCharacter,
     resumeSavedGame,
     choose,
     goToParagraph,
