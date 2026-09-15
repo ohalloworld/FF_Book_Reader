@@ -172,6 +172,11 @@ p {
   cursor: pointer;
 }
 
+.pdf-file-label.small {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+
 .pdf-file-input {
   display: none;
 }
@@ -605,6 +610,119 @@ p {
 .title-screen .link-button {
   display: inline-block;
   margin-bottom: 16px;
+}
+
+.section-edit-form {
+  margin-top: 8px;
+}
+
+.section-edit-form textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.5;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.section-edit-form h4 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.section-edit-choice {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.section-edit-choice input:first-child {
+  flex: 3;
+}
+
+.section-edit-choice input:nth-child(2) {
+  flex: 1;
+  min-width: 70px;
+}
+
+.section-edit-choice input {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.transcribe-prompt {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+}
+
+.transcribe-prompt-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.transcribe-prompt-form input {
+  width: 140px;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.pdf-browser {
+  margin-top: 20px;
+}
+
+.pdf-browser-panel {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.pdf-browser-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.pdf-browser-content {
+  margin-top: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.pdf-browser-paragraph {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+  font-size: 14px;
+}
+
+.pdf-browser-paragraph strong {
+  color: var(--accent);
 }
 
 .companion-tools {

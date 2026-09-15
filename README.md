@@ -11,18 +11,25 @@ story graph format lets you plug in your own (or your own original)
 gamebook content. `src/data/testBook.ts` is a small original demo book
 used to exercise every engine feature.
 
-Since a real book's numbered sections aren't digitized here, the reader
-also works as a **companion** alongside your physical/PDF book — add it to
-your **Library** (a title paired with a rule set) and play it in companion
-mode: a "Go to paragraph" box jumps straight to any section number (every
-section falls back to a blank placeholder instead of erroring, since none
-of it is authored), a **Previous** button does a true undo of character
-state (not just the displayed text) including unwinding a dice test or
-mid-fight damage, and **Companion Tools** let you manually roll any of the
-book's named tests, adjust any stat, add/remove inventory, and start an
-ad-hoc fight against a monster you type in yourself — all using the same
-dice/combat math as an authored book, just triggered by hand instead of
-automatically.
+Since a real book's numbered sections aren't digitized here, add it to
+your **Library** (a title paired with a rule set) instead. Attach its PDF
+and the book **fills itself in as you read**: land on a paragraph that
+hasn't been transcribed, say which PDF page it's on, and Claude reads
+every paragraph on that page — text and outgoing choices — straight from
+the picture, so re-visiting it later (or clicking one of its choices)
+shows the real thing, choice buttons included, the same as the demo book.
+No PDF attached, or don't want to spend the API calls? The reader falls
+back to **companion mode**: every un-transcribed section shows a blank
+placeholder, a "Go to paragraph" box jumps to any section number, a
+**Previous** button does a true undo of character state (not just the
+displayed text — it unwinds a dice test or mid-fight damage too), and
+**Companion Tools** let you manually roll any named test, adjust any stat,
+add/remove inventory, and start an ad-hoc fight against a monster you type
+in — all the same dice/combat math as an authored encounter, just
+triggered by hand. Both modes work together: a paragraph either has real
+transcribed text, or it's a blank companion placeholder, and you can mix
+the two freely as you go (or hand-type/correct a paragraph yourself via
+**Edit**, no PDF required).
 
 ## Running it locally
 
@@ -98,12 +105,30 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   it out immediately against a sample monster without needing full story
   content.
 - `src/engine/library.ts` — resolves a `LibraryBookEntry` (title + which
-  RuleSet it uses) into a playable `Gamebook` with an empty `sections`
-  object, so `useGameSession`'s existing blank-section fallback carries the
-  whole companion-mode experience with no special-casing.
+  RuleSet it uses) into a playable `Gamebook`. `deriveBookSections` builds
+  its `sections` by flattening every transcribed PDF page (plus any manual
+  corrections) into `Section`s; anything not yet transcribed still falls
+  through to `useGameSession`'s blank-section fallback, so companion mode
+  and transcribed content coexist paragraph by paragraph with no
+  special-casing.
+- `server/bookTranscriptionPlugin.ts` exposes `POST /api/library/:id/pdf`
+  (stores an uploaded PDF on disk, in `.local-books/`, gitignored — never
+  committed, never re-uploaded on later requests), `GET
+  /api/library/:id/pdf-status` (page count), and `POST
+  /api/library/:id/transcribe-page` (renders one page, sends it to Claude
+  with a Zod schema — `server/pageTranscriptionSchema.ts` — asking for
+  every paragraph's text and outgoing choices, structured the same way the
+  rules importer does). `server/httpUtils.ts` holds the request-body and
+  path-safety helpers both server plugins share.
+- `src/engine/transcriptionApi.ts` — client for those endpoints.
+  `src/components/PdfPageTools.tsx` — the "which page is this" prompt
+  shown on a blank section, and a separate **Browse PDF Pages** panel for
+  flipping through pages (transcribing new ones, showing cached ones
+  instantly) without moving your actual position in the story.
 - `src/components/Library.tsx` — lists the built-in demo plus your saved
-  library books (`localStorage`, alongside saved rule sets), and a form to
-  add a new one (title, author, starting paragraph, rule set).
+  library books (`localStorage`, alongside saved rule sets), a form to add
+  a new one (title, author, starting paragraph, rule set, optional PDF),
+  and per-book Attach/Replace PDF.
 - `src/components/CompanionTools.tsx` — manual test rolls and the ad-hoc
   combat form, shown during play; `CharacterSheet.tsx` takes an optional
   `actions` prop for the inline stat/inventory edit controls (omitted in
@@ -145,17 +170,36 @@ content is a separate step of writing your own `Gamebook` (see below). Keep
 any transcribed story content as local, `.gitignore`d files rather than
 committing it — even for personal use, that's real copyrighted text.
 
-## Playing a real book (companion mode)
+## Playing a real book
 
 Open the **Library** tab and use **Add a Book**: give it a title, optional
-author, which paragraph it starts at (usually `1`), and which rule set to
-use (the standard rules, or one you've imported). Click **Play** and it
-behaves exactly like the demo book's engine — character creation, save/
-resume, combat and Luck-test math — except every section is blank, since
-none of it is authored. Read the paragraph from your own copy of the book,
-then either follow its printed choice ("turn to 245") via the **Go to
-paragraph** box, or use **Companion Tools** to roll a test, adjust a stat,
-manage inventory, or fight a monster it describes.
+author, which paragraph it starts at (usually `1`), which rule set to use
+(the standard rules, or one you've imported), and — optionally, right
+there or later from the book's row — its PDF. Click **Play** and it
+behaves exactly like the demo book's engine: character creation, save/
+resume, combat and Luck-test math.
+
+**With a PDF attached:** landing on a section with no text yet shows a
+prompt asking which PDF page it's on. Fighting Fantasy paragraph numbers
+are deliberately not in page order (so you can't peek ahead by flipping
+pages), so this can't be guessed — but you already have the page open in
+your own book, so it's a quick answer. Transcribing a page fills in every
+paragraph found there at once, so a handful of these questions cover a lot
+of the book. Once transcribed, a paragraph shows its real text and real
+choice buttons — click one like any authored section, no more typing
+numbers. Got a misread? **Edit this paragraph** fixes it by hand. Want to
+skim ahead or double-check something without moving your character? Open
+**Browse PDF Pages** and flip Prev/Next.
+
+**Without a PDF (or for anything not transcribed yet):** the reader falls
+back to companion mode — follow the book's printed choice ("turn to 245")
+via the **Go to paragraph** box, or use **Companion Tools** to roll a
+test, adjust a stat, manage inventory, or fight a monster it describes.
+
+Transcribed text is real copyrighted book content, stored only in your
+browser's `localStorage` and, for the PDF itself, `.local-books/` on your
+disk — neither ever touches this git repo (both are gitignored) or
+anywhere outside your machine.
 
 ## Authoring a fully digitized book
 

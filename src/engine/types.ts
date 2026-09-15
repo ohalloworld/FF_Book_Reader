@@ -137,6 +137,28 @@ export interface Gamebook {
   startSection: SectionId;
   ruleSet: RuleSet;
   sections: Record<SectionId, Section>;
+  /** True for a book built from a Library entry (see engine/library.ts) —
+   * its `sections` are derived from transcription/override storage rather
+   * than hand-authored, so the reader can safely edit/transcribe into it.
+   * Never true for a hand-authored book like the demo, whose `sections`
+   * must not be overwritten by that derivation. */
+  isLibraryBook?: boolean;
+}
+
+/** One paragraph transcribed from a book's PDF via Claude vision, cached
+ * per book so it only needs transcribing once. */
+export interface TranscribedParagraph {
+  id: SectionId;
+  text: string;
+  choices: { text: string; to: SectionId }[];
+}
+
+/** Every paragraph found on one PDF page during a transcription request —
+ * a page typically holds several paragraphs, so one request populates
+ * several at once. */
+export interface TranscribedPage {
+  pdfPage: number;
+  paragraphs: TranscribedParagraph[];
 }
 
 /** A book in the reader's library that has no authored story graph — just

@@ -18,6 +18,9 @@ dev-dist
 .env.*
 !.env.example
 
+# Book PDFs attached to library entries — real copyrighted content, stays local
+.local-books/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

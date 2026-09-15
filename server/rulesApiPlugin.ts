@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { IncomingMessage, ServerResponse } from "node:http";
 import { PDFParse } from "pdf-parse";
 import type { Plugin } from "vite";
+import { readJsonBody, readRawBody, sendJson, splitDataUrl } from "./httpUtils.js";
 import { RuleSetExtractionSchema } from "./ruleSetSchema.js";
 
 const EXTRACTION_SYSTEM_PROMPT = `You extract structured game rules from the rules section of a Fighting-Fantasy-style gamebook (the "How to fight the monsters" / "Adventure Sheet" / background rules pages a reader transcribes for you). You may be given the text directly, or page images (photographs/scans of the rules pages) to read yourself. Either way, produce a structured rule set describing:
@@ -16,41 +16,6 @@ Use lowercase snake_case for machine keys. Base everything strictly on what the 
 
 const MAX_PDF_BYTES = 40 * 1024 * 1024; // 40MB — plenty for a scanned-text gamebook, cheap to cap
 const MAX_RENDER_PAGES = 25; // a rules section is never this long; guards against rendering a whole book
-
-async function readRawBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of req) {
-    const buf = chunk as Buffer;
-    total += buf.length;
-    if (total > maxBytes) {
-      throw Object.assign(new Error(`Body exceeds ${Math.round(maxBytes / 1024 / 1024)}MB limit`), { statusCode: 413 });
-    }
-    chunks.push(buf);
-  }
-  return Buffer.concat(chunks);
-}
-
-async function readJsonBody(req: IncomingMessage, maxBytes: number): Promise<unknown> {
-  const raw = (await readRawBody(req, maxBytes)).toString("utf-8");
-  return raw ? JSON.parse(raw) : {};
-}
-
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status;
-  res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify(body));
-}
-
-/** Splits a "data:image/png;base64,AAAA..." URL into its media type and
- * raw base64 payload, as the Anthropic API's image blocks expect. */
-function splitDataUrl(dataUrl: string): { mediaType: string; data: string } {
-  const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl);
-  if (!match) {
-    throw Object.assign(new Error("Expected a base64 data URL for each page image"), { statusCode: 400 });
-  }
-  return { mediaType: match[1], data: match[2] };
-}
 
 /** Dev-only local API, running entirely in this Node process so nothing —
  * not the Anthropic API key, not the PDF you upload — leaves your machine

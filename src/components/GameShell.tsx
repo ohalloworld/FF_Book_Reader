@@ -1,14 +1,47 @@
+import { useCallback, useEffect, useState } from "react";
+import { deriveBookSections } from "../engine/library";
+import { saveBookOverride } from "../engine/storage";
 import { useGameSession } from "../engine/useGameSession";
-import type { Gamebook } from "../engine/types";
+import { getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
+import type { Gamebook, TranscribedParagraph } from "../engine/types";
 import { CharacterSheet } from "./CharacterSheet";
 import { ChoiceList } from "./ChoiceList";
 import { CombatPanel } from "./CombatPanel";
 import { CompanionTools } from "./CompanionTools";
 import { ParagraphNav } from "./ParagraphNav";
+import { PdfPageBrowser, TranscribeSectionPrompt } from "./PdfPageTools";
 import { SectionView } from "./SectionView";
 import { TitleScreen } from "./TitleScreen";
 
-export function GameShell({ book, onExit }: { book: Gamebook; onExit?: () => void }) {
+export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExit?: () => void }) {
+  const [book, setBook] = useState(initialBook);
+  const [pdfStatus, setPdfStatus] = useState<PdfStatus | null>(null);
+
+  useEffect(() => {
+    if (!initialBook.isLibraryBook) return;
+    let cancelled = false;
+    getPdfStatus(initialBook.id)
+      .then((status) => {
+        if (!cancelled) setPdfStatus(status);
+      })
+      .catch(() => setPdfStatus({ exists: false }));
+    return () => {
+      cancelled = true;
+    };
+  }, [initialBook.id, initialBook.isLibraryBook]);
+
+  const refreshSections = useCallback(() => {
+    setBook((prev) => ({ ...prev, sections: deriveBookSections(prev.id) }));
+  }, []);
+
+  const saveOverride = useCallback(
+    (paragraph: TranscribedParagraph) => {
+      saveBookOverride(book.id, paragraph);
+      refreshSections();
+    },
+    [book.id, refreshSections],
+  );
+
   const session = useGameSession(book);
   const { character, currentSection } = session;
 
@@ -26,6 +59,7 @@ export function GameShell({ book, onExit }: { book: Gamebook; onExit?: () => voi
 
   const showCombat = session.combat && !session.combatResolved;
   const isEnding = Boolean(currentSection.ending);
+  const isBlank = !currentSection.text.trim();
 
   return (
     <div className="game-shell">
@@ -46,7 +80,15 @@ export function GameShell({ book, onExit }: { book: Gamebook; onExit?: () => voi
           </button>
         )}
 
-        <SectionView section={currentSection} luckOutcome={session.lastLuckOutcome} />
+        <SectionView
+          section={currentSection}
+          luckOutcome={session.lastLuckOutcome}
+          onSaveOverride={book.isLibraryBook ? saveOverride : undefined}
+        />
+
+        {pdfStatus?.exists && isBlank && (
+          <TranscribeSectionPrompt bookId={book.id} sectionId={currentSection.id} onTranscribed={refreshSections} />
+        )}
 
         {showCombat && session.combat && (
           <CombatPanel
@@ -74,6 +116,10 @@ export function GameShell({ book, onExit }: { book: Gamebook; onExit?: () => voi
             onStartCombat={session.startManualCombat}
             combatActive={Boolean(showCombat)}
           />
+        )}
+
+        {pdfStatus?.exists && (
+          <PdfPageBrowser bookId={book.id} totalPages={pdfStatus.totalPages} onTranscribed={refreshSections} />
         )}
 
         <ParagraphNav

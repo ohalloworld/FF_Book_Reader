@@ -1,4 +1,4 @@
-import type { Character, LibraryBookEntry, RuleSet, SectionId } from "./types";
+import type { Character, LibraryBookEntry, RuleSet, SectionId, TranscribedPage, TranscribedParagraph } from "./types";
 
 export interface SavedGame {
   bookId: string;
@@ -89,3 +89,45 @@ const LIBRARY_PREFIX = "ff-reader:library:";
 export const listLibraryBooks = (): LibraryBookEntry[] => listIndexed<LibraryBookEntry>(LIBRARY_INDEX_KEY, LIBRARY_PREFIX);
 export const saveLibraryBook = (entry: LibraryBookEntry): void => saveIndexed(LIBRARY_INDEX_KEY, LIBRARY_PREFIX, entry.id, entry);
 export const deleteLibraryBook = (id: string): void => deleteIndexed(LIBRARY_INDEX_KEY, LIBRARY_PREFIX, id);
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+}
+
+/** Transcribed PDF pages, cached per book so a page never needs sending to
+ * Claude twice. Keyed by PDF page number. */
+export function getBookPages(bookId: string): Record<number, TranscribedPage> {
+  return readJson(`ff-reader:book-pages:${bookId}`, {});
+}
+
+export function saveBookPage(bookId: string, page: TranscribedPage): void {
+  const pages = getBookPages(bookId);
+  pages[page.pdfPage] = page;
+  writeJson(`ff-reader:book-pages:${bookId}`, pages);
+}
+
+/** Manual corrections to a transcribed paragraph (fixing an OCR misread,
+ * say) — kept separate from the raw transcription cache so a corrected
+ * paragraph always wins over whatever page(s) it was found on. */
+export function getBookOverrides(bookId: string): Record<SectionId, TranscribedParagraph> {
+  return readJson(`ff-reader:book-overrides:${bookId}`, {});
+}
+
+export function saveBookOverride(bookId: string, paragraph: TranscribedParagraph): void {
+  const overrides = getBookOverrides(bookId);
+  overrides[paragraph.id] = paragraph;
+  writeJson(`ff-reader:book-overrides:${bookId}`, overrides);
+}
