@@ -4,11 +4,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { PDFParse } from "pdf-parse";
 import type { Plugin } from "vite";
-import { isSafeId, readRawBody, sendJson, splitDataUrl } from "./httpUtils.js";
+import { isSafeId, readRawBody, rejectCrossOrigin, sendJson, splitDataUrl } from "./httpUtils.js";
 import { PageTranscriptionSchema } from "./pageTranscriptionSchema.js";
 
 const MAX_PDF_BYTES = 40 * 1024 * 1024;
 const BOOKS_DIR = path.join(process.cwd(), ".local-books");
+// Override for cost/quality experiments — the default stays claude-opus-5.
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
 
 const TRANSCRIBE_SYSTEM_PROMPT = `You transcribe numbered paragraphs from one page image of a Fighting-Fantasy-style gamebook. Each paragraph starts with a printed number. For every complete paragraph visible on the page:
 - transcribe its full text verbatim — do not summarize, paraphrase, or correct it
@@ -31,6 +33,8 @@ export function bookTranscriptionPlugin(): Plugin {
     name: "ff-book-transcription-api",
     configureServer(server) {
       server.middlewares.use("/api/library", async (req, res) => {
+        if (rejectCrossOrigin(req, res)) return;
+
         const url = new URL(req.url ?? "", "http://localhost");
         const parts = url.pathname.split("/").filter(Boolean);
         const bookId = parts[0];
@@ -103,9 +107,9 @@ export function bookTranscriptionPlugin(): Plugin {
             const { mediaType, data: base64 } = splitDataUrl(dataUrl);
             const client = new Anthropic();
             const response = await client.messages.parse({
-              model: "claude-opus-5",
+              model: MODEL,
               max_tokens: 8000,
-              system: TRANSCRIBE_SYSTEM_PROMPT,
+              system: [{ type: "text", text: TRANSCRIBE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
               messages: [
                 {
                   role: "user",

@@ -84,11 +84,11 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
 - `src/engine/parseRulesApi.ts` — client for the local rules-parsing
   endpoint.
 - `server/rulesApiPlugin.ts` — a Vite dev-server middleware plugin exposing
-  `POST /api/parse-rules`. It calls the Anthropic API (`claude-opus-5`)
-  server-side with a Zod schema (`server/ruleSetSchema.ts`) via structured
-  outputs, so parsing is reliable JSON, not free text — and your API key
-  stays in this Node process and is never sent to the browser. Only active
-  under `npm run dev`.
+  `POST /api/parse-rules`. It calls the Anthropic API (`claude-opus-5` by
+  default — override with `ANTHROPIC_MODEL` in `.env`) server-side with a
+  Zod schema (`server/ruleSetSchema.ts`) via structured outputs, so parsing
+  is reliable JSON, not free text — and your API key stays in this Node
+  process and is never sent to the browser. Only active under `npm run dev`.
 - `server/rulesApiPlugin.ts` also exposes `POST /api/extract-pdf-text`
   (per-page text extraction via `pdf-parse`) and `POST /api/render-pdf-pages`
   (renders a page range as PNG images, for scanned PDFs with no text
@@ -120,7 +120,13 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   `server/pageTranscriptionSchema.ts` — asking for every paragraph's text
   and outgoing choices, structured the same way the rules importer does).
   `server/httpUtils.ts` holds the request-body and path-safety helpers
-  both server plugins share.
+  both server plugins share, plus `rejectCrossOrigin`, called first by
+  every endpoint: since `server.host: true` makes these reachable from
+  anywhere on your LAN with no login of their own, it rejects any request
+  whose `Origin` doesn't match the `Host` it's talking to — same-origin
+  requests (this app, curl, a phone loading this same address) go through
+  as before, but another website's page can no longer silently call them
+  and spend your API credits or touch your local files.
 - `src/engine/transcriptionApi.ts` — client for those endpoints.
   `src/engine/pageImageStore.ts` — an IndexedDB store just for the
   rendered page images transcription returns; kept separate from the

@@ -33,6 +33,31 @@ export function isSafeId(id: string): boolean {
   return SAFE_ID_RE.test(id);
 }
 
+/** CSRF defense: a browser only omits Origin for a same-origin request (or
+ * a non-browser client like curl); a cross-site request always carries an
+ * Origin that won't match the Host it's talking to. Rejecting a
+ * present-but-mismatched Origin — while still allowing no Origin at all —
+ * blocks another website from silently calling these endpoints (which
+ * would otherwise write local files or spend the operator's own Anthropic
+ * credits) while leaving same-origin and same-device (curl, the app
+ * itself, a phone on the same WiFi loading this same origin) untouched. */
+export function rejectCrossOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+  const origin = req.headers.origin;
+  const trusted =
+    !origin ||
+    (() => {
+      try {
+        return new URL(origin).host === req.headers.host;
+      } catch {
+        return false;
+      }
+    })();
+  if (!trusted) {
+    sendJson(res, 403, { error: "Cross-origin requests are not allowed." });
+  }
+  return !trusted;
+}
+
 /** Splits a "data:image/png;base64,AAAA..." URL into its media type and
  * raw base64 payload, as the Anthropic API's image blocks expect. */
 export function splitDataUrl(dataUrl: string): { mediaType: string; data: string } {

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { PDFParse } from "pdf-parse";
 import type { Plugin } from "vite";
-import { readJsonBody, readRawBody, sendJson, splitDataUrl } from "./httpUtils.js";
+import { readJsonBody, readRawBody, rejectCrossOrigin, sendJson, splitDataUrl } from "./httpUtils.js";
 import { RuleSetExtractionSchema } from "./ruleSetSchema.js";
 
 const EXTRACTION_SYSTEM_PROMPT = `You extract structured game rules from the rules section of a Fighting-Fantasy-style gamebook (the "How to fight the monsters" / "Adventure Sheet" / background rules pages a reader transcribes for you). You may be given the text directly, or page images (photographs/scans of the rules pages) to read yourself. Either way, produce a structured rule set describing:
@@ -16,6 +16,8 @@ Use lowercase snake_case for machine keys. Base everything strictly on what the 
 
 const MAX_PDF_BYTES = 40 * 1024 * 1024; // 40MB — plenty for a scanned-text gamebook, cheap to cap
 const MAX_RENDER_PAGES = 25; // a rules section is never this long; guards against rendering a whole book
+// Override for cost/quality experiments — the default stays claude-opus-5.
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
 
 /** Dev-only local API, running entirely in this Node process so nothing —
  * not the Anthropic API key, not the PDF you upload — leaves your machine
@@ -26,6 +28,7 @@ export function rulesApiPlugin(): Plugin {
     name: "ff-rules-api",
     configureServer(server) {
       server.middlewares.use("/api/extract-pdf-text", async (req, res) => {
+        if (rejectCrossOrigin(req, res)) return;
         if (req.method !== "POST") {
           sendJson(res, 405, { error: "Method not allowed" });
           return;
@@ -64,6 +67,7 @@ export function rulesApiPlugin(): Plugin {
       });
 
       server.middlewares.use("/api/render-pdf-pages", async (req, res) => {
+        if (rejectCrossOrigin(req, res)) return;
         if (req.method !== "POST") {
           sendJson(res, 405, { error: "Method not allowed" });
           return;
@@ -103,6 +107,7 @@ export function rulesApiPlugin(): Plugin {
       });
 
       server.middlewares.use("/api/parse-rules", async (req, res) => {
+        if (rejectCrossOrigin(req, res)) return;
         if (req.method !== "POST") {
           sendJson(res, 405, { error: "Method not allowed" });
           return;
@@ -148,9 +153,9 @@ export function rulesApiPlugin(): Plugin {
 
           const client = new Anthropic();
           const response = await client.messages.parse({
-            model: "claude-opus-5",
+            model: MODEL,
             max_tokens: 8000,
-            system: EXTRACTION_SYSTEM_PROMPT,
+            system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
             messages: [{ role: "user", content }],
             output_config: { format: zodOutputFormat(RuleSetExtractionSchema) },
           });
