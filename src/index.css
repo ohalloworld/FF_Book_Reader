@@ -98,12 +98,58 @@ p {
 }
 
 /* Rules importer */
-.importer {
+.importer,
+.library {
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 28px;
   box-shadow: var(--shadow);
+}
+
+.library-list {
+  margin-top: 16px;
+}
+
+.library-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.library-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.library-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  max-width: 420px;
+}
+
+.library-create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.library-create-form input,
+.library-create-form select {
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
 }
 
 .importer-subhead {
@@ -355,6 +401,83 @@ p {
   font-size: 15px;
 }
 
+.inventory-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.item-remove-button {
+  font: inherit;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--bar-fill-low);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.add-item-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.add-item-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.counter-row {
+  align-items: center;
+}
+
+.counter-row-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.stat-adjuster input {
+  width: 44px;
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.stat-adjust-button {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
 .stat {
   margin-bottom: 10px;
 }
@@ -472,6 +595,62 @@ p {
 .choice-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.back-to-library {
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.title-screen .link-button {
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.companion-tools {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.companion-tools h3 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.companion-tests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.companion-combat-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.companion-combat-form input[type="text"] {
+  flex: 2;
+  min-width: 140px;
+}
+
+.companion-combat-form input[type="number"] {
+  flex: 1;
+  min-width: 80px;
+}
+
+.companion-combat-form input {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
 }
 
 .paragraph-nav {

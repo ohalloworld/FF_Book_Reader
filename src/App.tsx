@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { GameShell } from "./components/GameShell";
+import { Library } from "./components/Library";
 import { RulesImporter } from "./components/RulesImporter";
-import { testBook } from "./data/testBook";
+import type { Gamebook } from "./engine/types";
 
-type View = "play" | "import";
+type View = "library" | "import";
 
 function App() {
-  const [view, setView] = useState<View>("play");
+  const [view, setView] = useState<View>("library");
+  const [activeBook, setActiveBook] = useState<Gamebook | null>(null);
 
   return (
     <>
       <nav className="top-nav">
         <button
           type="button"
-          className={"nav-link" + (view === "play" ? " active" : "")}
-          onClick={() => setView("play")}
+          className={"nav-link" + (view === "library" ? " active" : "")}
+          onClick={() => {
+            setView("library");
+            setActiveBook(null);
+          }}
         >
-          Play
+          Library
         </button>
         <button
           type="button"
@@ -26,7 +31,15 @@ function App() {
           Import Book Rules
         </button>
       </nav>
-      {view === "play" ? <GameShell book={testBook} /> : <RulesImporter />}
+      {view === "library" ? (
+        activeBook ? (
+          <GameShell book={activeBook} onExit={() => setActiveBook(null)} />
+        ) : (
+          <Library onPlay={setActiveBook} />
+        )
+      ) : (
+        <RulesImporter />
+      )}
     </>
   );
 }

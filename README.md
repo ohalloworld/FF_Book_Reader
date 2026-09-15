@@ -11,14 +11,18 @@ story graph format lets you plug in your own (or your own original)
 gamebook content. `src/data/testBook.ts` is a small original demo book
 used to exercise every engine feature.
 
-Since a real book's numbered sections likely aren't digitized here, the
-reader also works as a **companion** alongside your physical/PDF book: a
-"Go to paragraph" box jumps straight to any section number — if that
-section isn't authored in the `Gamebook`, it shows a blank placeholder
-instead of erroring, so you can still track your character sheet, combat,
-and dice tests while reading the real text yourself. A **Previous** button
-does a true undo (restores character state as it was, not just the section
-text), including unwinding a dice test or mid-fight damage.
+Since a real book's numbered sections aren't digitized here, the reader
+also works as a **companion** alongside your physical/PDF book — add it to
+your **Library** (a title paired with a rule set) and play it in companion
+mode: a "Go to paragraph" box jumps straight to any section number (every
+section falls back to a blank placeholder instead of erroring, since none
+of it is authored), a **Previous** button does a true undo of character
+state (not just the displayed text) including unwinding a dice test or
+mid-fight damage, and **Companion Tools** let you manually roll any of the
+book's named tests, adjust any stat, add/remove inventory, and start an
+ad-hoc fight against a monster you type in yourself — all using the same
+dice/combat math as an authored book, just triggered by hand instead of
+automatically.
 
 ## Running it locally
 
@@ -93,6 +97,17 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   extracted stats/tests/combat rules, save it (to `localStorage`), and try
   it out immediately against a sample monster without needing full story
   content.
+- `src/engine/library.ts` — resolves a `LibraryBookEntry` (title + which
+  RuleSet it uses) into a playable `Gamebook` with an empty `sections`
+  object, so `useGameSession`'s existing blank-section fallback carries the
+  whole companion-mode experience with no special-casing.
+- `src/components/Library.tsx` — lists the built-in demo plus your saved
+  library books (`localStorage`, alongside saved rule sets), and a form to
+  add a new one (title, author, starting paragraph, rule set).
+- `src/components/CompanionTools.tsx` — manual test rolls and the ad-hoc
+  combat form, shown during play; `CharacterSheet.tsx` takes an optional
+  `actions` prop for the inline stat/inventory edit controls (omitted in
+  the rules-sandbox, where the sheet stays read-only).
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
 - `vite.config.ts` — `server.host: true` (LAN access for phones) and
@@ -130,13 +145,28 @@ content is a separate step of writing your own `Gamebook` (see below). Keep
 any transcribed story content as local, `.gitignore`d files rather than
 committing it — even for personal use, that's real copyrighted text.
 
-## Adding a new book
+## Playing a real book (companion mode)
 
-Write a `Gamebook` object — `{ id, title, author, startSection, ruleSet,
-sections }` — pairing your story graph with either the standard ruleset or
-one you've imported, and point `src/App.tsx` at it. See
-`src/data/testBook.ts` for a worked example covering choices, item gating,
-a dice test, combat, fleeing, and both endings.
+Open the **Library** tab and use **Add a Book**: give it a title, optional
+author, which paragraph it starts at (usually `1`), and which rule set to
+use (the standard rules, or one you've imported). Click **Play** and it
+behaves exactly like the demo book's engine — character creation, save/
+resume, combat and Luck-test math — except every section is blank, since
+none of it is authored. Read the paragraph from your own copy of the book,
+then either follow its printed choice ("turn to 245") via the **Go to
+paragraph** box, or use **Companion Tools** to roll a test, adjust a stat,
+manage inventory, or fight a monster it describes.
+
+## Authoring a fully digitized book
+
+For an original story (or one you're writing yourself) with real choices,
+effects, and combat encounters baked in — like the demo — write a
+`Gamebook` object by hand: `{ id, title, author, startSection, ruleSet,
+sections }`, pairing your story graph with either the standard ruleset or
+one you've imported. See `src/data/testBook.ts` for a worked example
+covering choices, item gating, a dice test, combat, fleeing, and both
+endings. There's no UI for this yet — it's a `src/data/*.ts` file you add
+and reference directly, the same way `testBook.ts` is.
 
 ## Development
 

@@ -6,18 +6,25 @@ export function TitleScreen({
   hasSave,
   onStart,
   onResume,
+  onExit,
 }: {
   book: Gamebook;
   hasSave: boolean;
   onStart: (name: string) => void;
   onResume: () => void;
+  onExit?: () => void;
 }) {
   const [name, setName] = useState("");
 
   return (
     <div className="title-screen">
+      {onExit && (
+        <button type="button" className="link-button" onClick={onExit}>
+          ← Back to Library
+        </button>
+      )}
       <h1>{book.title}</h1>
-      <p className="muted">by {book.author}</p>
+      {book.author && <p className="muted">by {book.author}</p>}
       <form
         onSubmit={(e) => {
           e.preventDefault();

@@ -138,3 +138,16 @@ export interface Gamebook {
   ruleSet: RuleSet;
   sections: Record<SectionId, Section>;
 }
+
+/** A book in the reader's library that has no authored story graph — just
+ * a title paired with a RuleSet. Played in "companion mode": every section
+ * falls back to the blank placeholder (see useGameSession/lookupSection),
+ * and the reader tracks paragraphs, stats, and combat manually while
+ * reading the physical/PDF book themselves. */
+export interface LibraryBookEntry {
+  id: string;
+  title: string;
+  author?: string;
+  ruleSetId: string;
+  startSection: SectionId;
+}

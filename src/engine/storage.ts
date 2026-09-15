@@ -1,4 +1,4 @@
-import type { Character, RuleSet, SectionId } from "./types";
+import type { Character, LibraryBookEntry, RuleSet, SectionId } from "./types";
 
 export interface SavedGame {
   bookId: string;
@@ -34,44 +34,58 @@ export function clearGame(bookId: string): void {
   }
 }
 
-const RULESET_INDEX_KEY = "ff-reader:rulesets:index";
-const RULESET_PREFIX = "ff-reader:ruleset:";
-
-export function listSavedRuleSets(): RuleSet[] {
+/** A small indexed collection of JSON records in localStorage: an index
+ * key holding an array of ids, plus one key per record. Used for both
+ * saved RuleSets and library books, which share this exact shape. */
+function listIndexed<T>(indexKey: string, itemPrefix: string): T[] {
   try {
-    const raw = localStorage.getItem(RULESET_INDEX_KEY);
+    const raw = localStorage.getItem(indexKey);
     const ids: string[] = raw ? JSON.parse(raw) : [];
     return ids
       .map((id) => {
-        const item = localStorage.getItem(RULESET_PREFIX + id);
-        return item ? (JSON.parse(item) as RuleSet) : null;
+        const item = localStorage.getItem(itemPrefix + id);
+        return item ? (JSON.parse(item) as T) : null;
       })
-      .filter((r): r is RuleSet => r !== null);
+      .filter((r): r is T => r !== null);
   } catch {
     return [];
   }
 }
 
-export function saveRuleSet(ruleSet: RuleSet): void {
+function saveIndexed(indexKey: string, itemPrefix: string, id: string, value: unknown): void {
   try {
-    localStorage.setItem(RULESET_PREFIX + ruleSet.id, JSON.stringify(ruleSet));
-    const raw = localStorage.getItem(RULESET_INDEX_KEY);
+    localStorage.setItem(itemPrefix + id, JSON.stringify(value));
+    const raw = localStorage.getItem(indexKey);
     const ids: string[] = raw ? JSON.parse(raw) : [];
-    if (!ids.includes(ruleSet.id)) {
-      localStorage.setItem(RULESET_INDEX_KEY, JSON.stringify([...ids, ruleSet.id]));
+    if (!ids.includes(id)) {
+      localStorage.setItem(indexKey, JSON.stringify([...ids, id]));
     }
   } catch {
     // ignore
   }
 }
 
-export function deleteRuleSet(id: string): void {
+function deleteIndexed(indexKey: string, itemPrefix: string, id: string): void {
   try {
-    localStorage.removeItem(RULESET_PREFIX + id);
-    const raw = localStorage.getItem(RULESET_INDEX_KEY);
+    localStorage.removeItem(itemPrefix + id);
+    const raw = localStorage.getItem(indexKey);
     const ids: string[] = raw ? JSON.parse(raw) : [];
-    localStorage.setItem(RULESET_INDEX_KEY, JSON.stringify(ids.filter((i) => i !== id)));
+    localStorage.setItem(indexKey, JSON.stringify(ids.filter((i) => i !== id)));
   } catch {
     // ignore
   }
 }
+
+const RULESET_INDEX_KEY = "ff-reader:rulesets:index";
+const RULESET_PREFIX = "ff-reader:ruleset:";
+
+export const listSavedRuleSets = (): RuleSet[] => listIndexed<RuleSet>(RULESET_INDEX_KEY, RULESET_PREFIX);
+export const saveRuleSet = (ruleSet: RuleSet): void => saveIndexed(RULESET_INDEX_KEY, RULESET_PREFIX, ruleSet.id, ruleSet);
+export const deleteRuleSet = (id: string): void => deleteIndexed(RULESET_INDEX_KEY, RULESET_PREFIX, id);
+
+const LIBRARY_INDEX_KEY = "ff-reader:library:index";
+const LIBRARY_PREFIX = "ff-reader:library:";
+
+export const listLibraryBooks = (): LibraryBookEntry[] => listIndexed<LibraryBookEntry>(LIBRARY_INDEX_KEY, LIBRARY_PREFIX);
+export const saveLibraryBook = (entry: LibraryBookEntry): void => saveIndexed(LIBRARY_INDEX_KEY, LIBRARY_PREFIX, entry.id, entry);
+export const deleteLibraryBook = (id: string): void => deleteIndexed(LIBRARY_INDEX_KEY, LIBRARY_PREFIX, id);

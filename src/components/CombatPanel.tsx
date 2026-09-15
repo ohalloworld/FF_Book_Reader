@@ -6,10 +6,11 @@ interface CombatPanelProps {
   ruleSet: RuleSet;
   onFight: (monsterId: string) => void;
   onFlee: () => void;
+  onEndCombat: () => void;
   onUseLuck: (context: LuckOutcomeContext) => void;
 }
 
-export function CombatPanel({ combat, ruleSet, onFight, onFlee, onUseLuck }: CombatPanelProps) {
+export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onUseLuck }: CombatPanelProps) {
   const { lastRound } = combat;
   const luckContext: LuckOutcomeContext | null =
     lastRound?.outcome === "player" ? "combat-damage" : lastRound?.outcome === "monster" ? "combat-heal" : null;
@@ -66,10 +67,16 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onUseLuck }: Com
             Test your Luck
           </button>
         )}
-        {combat.fleeGoTo && (
-          <button type="button" className="choice-button secondary" onClick={onFlee}>
-            Flee
+        {combat.manual ? (
+          <button type="button" className="choice-button secondary" onClick={onEndCombat}>
+            End Combat
           </button>
+        ) : (
+          combat.fleeGoTo && (
+            <button type="button" className="choice-button secondary" onClick={onFlee}>
+              Flee
+            </button>
+          )
         )}
       </div>
     </div>

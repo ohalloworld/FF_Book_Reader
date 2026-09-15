@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { findTest, resolveCombatRound, resolveTest, type CombatRoundResult } from "./combat";
-import { applyEffects, availableChoices, cloneCharacter, generateCharacter, isAlive } from "./rules";
+import { applyEffect, applyEffects, availableChoices, cloneCharacter, generateCharacter, isAlive } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
 import type { Character, Choice, Gamebook, Monster, Section, SectionId } from "./types";
 
@@ -14,6 +14,9 @@ export interface CombatState {
   onDefeatGoTo?: SectionId;
   lastRound?: CombatRoundResult;
   luckUsedThisRound?: boolean;
+  /** True for a combat started manually (Companion Tools) rather than
+   * from an authored Section.encounter — changes how "Flee" behaves. */
+  manual?: boolean;
 }
 
 export type LuckOutcomeContext = "combat-damage" | "combat-heal" | "general";
@@ -209,6 +212,108 @@ export function useGameSession(book: Gamebook) {
     enterSection(combat.fleeGoTo, character);
   }, [character, combat, enterSection]);
 
+  /** Ends a manually-started combat without navigating anywhere — there's
+   * no section graph to flee "to" for an ad-hoc fight. */
+  const endCombat = useCallback(() => {
+    setCombat(undefined);
+  }, []);
+
+  /** Starts a combat against a monster the reader types in themselves,
+   * for a book whose encounters aren't digitized. No fleeGoTo/onDefeatGoTo
+   * — there's nowhere authored to send the player, so fleeing just ends
+   * the fight (endCombat) and a defeat just leaves STAMINA at 0 for the
+   * reader to act on themselves. */
+  const startManualCombat = useCallback(
+    (name: string, stats: Record<string, number>) => {
+      setCombat({
+        monsters: [
+          {
+            id: `manual-${Date.now()}`,
+            name,
+            stats,
+            currentDamageStat: stats[ruleSet.combat.damageStat] ?? 0,
+          },
+        ],
+        manual: true,
+      });
+      setLastLuckOutcome(null);
+    },
+    [ruleSet],
+  );
+
+  /** Rolls one of the book's named tests (Luck, Skill, ...) on demand,
+   * outside of any authored Section.test — for tracking a real book's own
+   * "Test your Luck" instructions as you read them. */
+  const rollTest = useCallback(
+    (testKey: string) => {
+      if (!character) return;
+      const test = findTest(ruleSet, testKey);
+      if (!test) return;
+
+      const result = resolveTest(character, test);
+      const updated = cloneCharacter(character);
+      if (test.decrementStatOnUse) {
+        const block = updated.pools[test.statKey];
+        if (block) {
+          updated.pools = {
+            ...updated.pools,
+            [test.statKey]: { ...block, current: Math.max(0, block.current - test.decrementStatOnUse) },
+          };
+        }
+      }
+
+      setCharacter(updated);
+      setLastLuckOutcome({ context: "general", success: result.success, roll: result.roll });
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist, ruleSet],
+  );
+
+  const adjustPool = useCallback(
+    (statKey: string, delta: number) => {
+      if (!character) return;
+      const updated = cloneCharacter(character);
+      applyEffect(updated, { type: "adjustPool", stat: statKey, delta });
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist],
+  );
+
+  const adjustCounter = useCallback(
+    (statKey: string, delta: number) => {
+      if (!character) return;
+      const updated = cloneCharacter(character);
+      applyEffect(updated, { type: "adjustCounter", stat: statKey, delta });
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist],
+  );
+
+  const addItem = useCallback(
+    (item: string) => {
+      const trimmed = item.trim();
+      if (!character || !trimmed) return;
+      const updated = cloneCharacter(character);
+      applyEffect(updated, { type: "addItem", item: trimmed });
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist],
+  );
+
+  const removeItem = useCallback(
+    (item: string) => {
+      if (!character) return;
+      const updated = cloneCharacter(character);
+      applyEffect(updated, { type: "removeItem", item });
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist],
+  );
+
   const useLuckOnRound = useCallback(
     (context: LuckOutcomeContext) => {
       if (!character || !combat?.lastRound || combat.luckUsedThisRound) return;
@@ -292,6 +397,13 @@ export function useGameSession(book: Gamebook) {
     goBack,
     fightRound,
     fleeCombat,
+    endCombat,
+    startManualCombat,
+    rollTest,
+    adjustPool,
+    adjustCounter,
+    addItem,
+    removeItem,
     useLuckOnRound,
     restart,
     isAlive: character ? isAlive(character, ruleSet) : true,
