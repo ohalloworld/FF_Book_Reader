@@ -142,14 +142,25 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   flipping through pages (transcribing new ones, showing cached ones
   instantly, page image included) without moving your actual position in
   the story.
-- `src/components/Library.tsx` — lists the built-in demo plus your saved
-  library books (`localStorage`, alongside saved rule sets), a form to add
-  a new one (title, author, starting paragraph, rule set, optional PDF),
-  and per-book Attach/Replace PDF. `src/components/BulkTranscribe.tsx` adds
-  a per-book **Pre-transcribe entire book** control (shown once a PDF's
-  attached) that works through every untranscribed page up front — with a
-  rough cost estimate, live progress, cancel, and per-page retry — so a
-  book can be read later with no server reachable at all.
+- `src/components/Library.tsx` — a card grid of the built-in demo plus your
+  saved library books (`localStorage`, alongside saved rule sets); each
+  card's **Manage** panel expands to Attach/Replace PDF, Delete, and the
+  bulk-transcribe control, keeping the card itself to just a cover and a
+  Play button. A form below adds a new book (title, author, starting
+  paragraph, rule set, optional PDF).
+  `src/components/BulkTranscribe.tsx` adds a per-book **Pre-transcribe
+  entire book** control (shown once a PDF's attached) that works through
+  every untranscribed page up front — with a rough cost estimate, live
+  progress, cancel, and per-page retry — so a book can be read later with
+  no server reachable at all. Its **Show page map** toggle renders a small
+  grid, one cell per PDF page, filled in once that page is transcribed —
+  a way to see at a glance how much of a book is actually readable before
+  you start, or after a bulk run finishes.
+  `src/components/PdfPageTools.tsx`'s page browser also has a
+  **Retranscribe this page** action, distinct from manual Edit — for when
+  a scan was blurry and the OCR read is just wrong, without hand-retyping
+  the whole page; it re-sends that one page to Claude and overwrites its
+  cached result.
 - `src/components/CompanionTools.tsx` — a free-form dice roller (any count/
   sides/modifier, e.g. for a "roll one die" instruction that isn't a named
   test), manual test rolls, and the ad-hoc combat form, shown during play;
@@ -168,7 +179,22 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   ritual of rolling your Adventure Sheet before the story starts:
   `CharacterRoll.tsx` shows each stat as it's rolled (with its dice
   formula, e.g. `1D6+6`) and lets you **Reroll** before committing, instead
-  of generating silently the instant you click Begin.
+  of generating silently the instant you click Begin. `TitleScreen.tsx`
+  also confirms before **Begin a new adventure** wipes an existing save
+  for that book, rather than deleting it silently.
+- `src/engine/backup.ts` + `src/components/BackupPanel.tsx` — since
+  everything (saves, rule sets, library entries, transcribed pages and
+  images) lives only in this browser's own storage, **Export backup** on
+  the Library screen bundles every `ff-reader:`-prefixed `localStorage`
+  key plus every cached page image into one downloadable JSON file, and
+  **Import backup** restores it — a full replace, not a merge, after a
+  confirmation showing when the backup was made. Worth doing before
+  clearing site data, reinstalling the PWA, or switching devices, since a
+  transcribed page cost a real Claude API call to produce.
+- Moving between sections plays a small page-turn animation
+  (`@keyframes page-turn-in` in `index.css`, on `.section-view` — it
+  remounts on every section change via its `key`), skipped automatically
+  under `prefers-reduced-motion`.
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
 - `vite.config.ts` — `server.host: true` (LAN access for phones) and

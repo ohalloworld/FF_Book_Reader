@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { slugify } from "../engine/parseRulesApi";
 import { availableRuleSets, buildGamebook, resolveRuleSet } from "../engine/library";
 import { deleteBookImages } from "../engine/pageImageStore";
-import { clearGame, deleteBookData, deleteLibraryBook, listLibraryBooks, saveLibraryBook } from "../engine/storage";
+import { clearGame, deleteBookData, deleteLibraryBook, getBookPages, listLibraryBooks, saveLibraryBook } from "../engine/storage";
 import { attachBookPdf, detachBookPdf, getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
 import type { Gamebook, LibraryBookEntry } from "../engine/types";
 import { testBook } from "../data/testBook";
+import { BackupPanel } from "./BackupPanel";
 import { BulkTranscribeControl } from "./BulkTranscribe";
 
 function uniqueId(base: string, existing: string[]): string {
@@ -27,6 +28,7 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
   const [ruleSetId, setRuleSetId] = useState(ruleSets[0]?.id ?? "");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,57 +114,81 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
         book yourself.
       </p>
 
+      <BackupPanel />
+
       {error && <p className="luck-banner failure">{error}</p>}
 
-      <div className="library-list">
-        <div className="library-book">
-          <div className="library-row">
-            <div>
-              <strong>{testBook.title}</strong>
-              <span className="muted"> — {testBook.author} (built-in demo, fully authored)</span>
+      <div className="library-grid">
+        <div className="library-card">
+          <div className="library-card-cover">
+            <span className="library-card-cover-title">{testBook.title}</span>
+          </div>
+          <div className="library-card-body">
+            <strong>{testBook.title}</strong>
+            <span className="muted small">{testBook.author} · built-in demo, fully authored</span>
+            <div className="library-card-actions">
+              <button type="button" className="choice-button" onClick={() => onPlay(testBook)}>
+                Play
+              </button>
             </div>
-            <button type="button" className="choice-button secondary" onClick={() => onPlay(testBook)}>
-              Play
-            </button>
           </div>
         </div>
 
         {books.map((entry) => {
           const ruleSet = resolveRuleSet(entry.ruleSetId);
           const status = pdfStatuses[entry.id];
+          const transcribedCount = status?.exists ? Object.keys(getBookPages(entry.id)).length : 0;
+          const expanded = expandedId === entry.id;
           return (
-            <div className="library-book" key={entry.id}>
-              <div className="library-row">
-                <div>
-                  <strong>{entry.title}</strong>
-                  {entry.author && <span className="muted"> — {entry.author}</span>}
-                  <span className="muted"> ({ruleSet?.bookTitle ?? "missing rule set"})</span>
-                  {status?.exists && <span className="muted"> · PDF attached, {status.totalPages} pages</span>}
-                </div>
-                <span className="library-row-actions">
-                  <button type="button" className="choice-button secondary" onClick={() => handlePlay(entry)}>
+            <div className="library-card" key={entry.id}>
+              <div className="library-card-cover">
+                <span className="library-card-cover-title">{entry.title}</span>
+                {status?.exists && status.totalPages !== undefined && (
+                  <span className="library-card-badge">
+                    {transcribedCount}/{status.totalPages}
+                  </span>
+                )}
+              </div>
+              <div className="library-card-body">
+                <strong>{entry.title}</strong>
+                <span className="muted small">
+                  {entry.author && `${entry.author} · `}
+                  {ruleSet?.bookTitle ?? "missing rule set"}
+                </span>
+                <div className="library-card-actions">
+                  <button type="button" className="choice-button" onClick={() => handlePlay(entry)}>
                     Play
                   </button>
-                  <label className="pdf-file-label small">
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      className="pdf-file-input"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void handleAttachExisting(entry.id, file);
-                      }}
-                    />
-                    {attaching === entry.id ? "Uploading…" : status?.exists ? "Replace PDF" : "Attach PDF"}
-                  </label>
-                  <button type="button" className="choice-button secondary" onClick={() => void handleDelete(entry.id)}>
-                    Delete
+                  <button type="button" className="link-button" onClick={() => setExpandedId(expanded ? null : entry.id)}>
+                    {expanded ? "Hide details" : "Manage"}
                   </button>
-                </span>
+                </div>
+
+                {expanded && (
+                  <div className="library-card-manage">
+                    <span className="library-row-actions">
+                      <label className="pdf-file-label small">
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="pdf-file-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleAttachExisting(entry.id, file);
+                          }}
+                        />
+                        {attaching === entry.id ? "Uploading…" : status?.exists ? "Replace PDF" : "Attach PDF"}
+                      </label>
+                      <button type="button" className="choice-button secondary" onClick={() => void handleDelete(entry.id)}>
+                        Delete
+                      </button>
+                    </span>
+                    {status?.exists && status.totalPages !== undefined && (
+                      <BulkTranscribeControl bookId={entry.id} totalPages={status.totalPages} />
+                    )}
+                  </div>
+                )}
               </div>
-              {status?.exists && status.totalPages !== undefined && (
-                <BulkTranscribeControl bookId={entry.id} totalPages={status.totalPages} />
-              )}
             </div>
           );
         })}

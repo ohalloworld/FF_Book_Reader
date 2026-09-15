@@ -58,6 +58,50 @@ export async function getPageImage(bookId: string, pdfPage: number): Promise<str
   }
 }
 
+/** Dumps every cached page image, keyed the same way the store itself
+ * keys them ("<bookId>:<pdfPage>") — used to build a full backup export. */
+export async function getAllPageImages(): Promise<Record<string, string>> {
+  try {
+    const db = await openDb();
+    return await new Promise<Record<string, string>>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const keysRequest = store.getAllKeys();
+      const valuesRequest = store.getAll();
+      tx.oncomplete = () => {
+        const entries: Record<string, string> = {};
+        const keys = keysRequest.result;
+        const values = valuesRequest.result as string[];
+        keys.forEach((key, i) => {
+          if (typeof key === "string") entries[key] = values[i];
+        });
+        resolve(entries);
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    return {};
+  }
+}
+
+/** Replaces the entire page-image store with the given "<bookId>:<pdfPage>"
+ * -> dataUrl entries — used to restore a full backup import. */
+export async function restoreAllPageImages(entries: Record<string, string>): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      for (const [key, dataUrl] of Object.entries(entries)) store.put(dataUrl, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    // ignore
+  }
+}
+
 /** Deletes every cached page image for a book — used when the book itself
  * is removed from the library, so its artwork doesn't linger forever. */
 export async function deleteBookImages(bookId: string): Promise<void> {

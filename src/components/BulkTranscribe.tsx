@@ -22,6 +22,7 @@ export function BulkTranscribeControl({ bookId, totalPages }: { bookId: string; 
   const [running, setRunning] = useState(false);
   const [currentPage, setCurrentPage] = useState<number | null>(null);
   const [failedPages, setFailedPages] = useState<number[]>([]);
+  const [showMap, setShowMap] = useState(false);
   const cancelRef = useRef(false);
 
   if (totalPages === 0) return null;
@@ -84,6 +85,21 @@ export function BulkTranscribeControl({ bookId, totalPages }: { bookId: string; 
           <button type="button" className="link-button" onClick={() => void run(failedPages)}>
             Retry
           </button>
+        </div>
+      )}
+
+      <button type="button" className="link-button completion-map-toggle" onClick={() => setShowMap((v) => !v)}>
+        {showMap ? "Hide" : "Show"} page map ({cachedPages.size}/{totalPages})
+      </button>
+      {showMap && (
+        <div className="completion-map-grid">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <span
+              key={p}
+              className={"completion-map-cell" + (cachedPages.has(p) ? " done" : "")}
+              title={`Page ${p}${cachedPages.has(p) ? " — transcribed" : " — not yet transcribed"}`}
+            />
+          ))}
         </div>
       )}
     </div>

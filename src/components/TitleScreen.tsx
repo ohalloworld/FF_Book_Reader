@@ -15,6 +15,7 @@ export function TitleScreen({
   onExit?: () => void;
 }) {
   const [name, setName] = useState("");
+  const [confirmingOverwrite, setConfirmingOverwrite] = useState(false);
 
   return (
     <div className="title-screen">
@@ -28,6 +29,10 @@ export function TitleScreen({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (hasSave && !confirmingOverwrite) {
+            setConfirmingOverwrite(true);
+            return;
+          }
           onStart(name);
         }}
       >
@@ -35,20 +40,38 @@ export function TitleScreen({
         <input
           id="hero-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            setConfirmingOverwrite(false);
+          }}
           placeholder="Adventurer"
           autoFocus
         />
-        <div className="title-actions">
-          <button type="submit" className="choice-button">
-            Begin a new adventure
-          </button>
-          {hasSave && (
-            <button type="button" className="choice-button secondary" onClick={onResume}>
-              Resume saved game
+
+        {confirmingOverwrite ? (
+          <div className="overwrite-confirm">
+            <p className="muted">Starting a new adventure deletes your saved game for this book. This can't be undone.</p>
+            <div className="title-actions">
+              <button type="submit" className="choice-button">
+                Yes, start over
+              </button>
+              <button type="button" className="choice-button secondary" onClick={() => setConfirmingOverwrite(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="title-actions">
+            <button type="submit" className="choice-button">
+              Begin a new adventure
             </button>
-          )}
-        </div>
+            {hasSave && (
+              <button type="button" className="choice-button secondary" onClick={onResume}>
+                Resume saved game
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

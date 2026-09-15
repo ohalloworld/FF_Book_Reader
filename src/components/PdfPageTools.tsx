@@ -95,11 +95,11 @@ export function PdfPageBrowser({
   const [error, setError] = useState<string | null>(null);
   const [pageJump, setPageJump] = useState("");
 
-  const goTo = async (target: number) => {
+  const goTo = async (target: number, options?: { force?: boolean }) => {
     if (target < 1 || (totalPages && target > totalPages)) return;
     setPage(target);
     setImage(undefined);
-    const cached = getBookPages(bookId)[target];
+    const cached = !options?.force && getBookPages(bookId)[target];
     if (cached) {
       setCurrent(cached);
       setStatus("idle");
@@ -107,7 +107,7 @@ export function PdfPageBrowser({
     } else {
       setStatus("loading");
       setError(null);
-      setCurrent(null);
+      if (!options?.force) setCurrent(null);
       try {
         const result = await transcribePage(bookId, target);
         saveBookPage(bookId, { pdfPage: result.pdfPage, paragraphs: result.paragraphs });
@@ -196,6 +196,14 @@ export function PdfPageBrowser({
                   <p>{p.text}</p>
                 </div>
               ))}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => void goTo(page, { force: true })}
+                disabled={status === "loading"}
+              >
+                Scan misread? Retranscribe this page
+              </button>
             </div>
           )}
         </div>
