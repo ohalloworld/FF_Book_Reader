@@ -21,6 +21,11 @@ dev-dist
 # Book PDFs attached to library entries — real copyrighted content, stays local
 .local-books/
 
+# Playwright test run artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

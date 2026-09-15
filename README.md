@@ -314,4 +314,19 @@ and reference directly, the same way `testBook.ts` is.
 npm run dev      # start the dev server (frontend + local rules API)
 npm run build    # typecheck + production build
 npm run lint     # oxlint
+npm run test:e2e # Playwright end-to-end suite (see tests/)
 ```
+
+`tests/` covers combat resolution, save/resume (and the new-game overwrite
+confirmation), transcription caching, character rolling, and the backup
+export/import round trip — real browser interactions against a real (but
+dedicated-port, disposable) dev server instance, not unit tests against the
+engine in isolation. Every test that would otherwise hit a billed Claude
+endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it
+via Playwright's `page.route`, so running the suite never spends real API
+credits — see `tests/transcription-cache.spec.ts` for the pattern.
+`tests/helpers.ts`'s `stubMaxDice` makes the engine's own dice
+deterministic for tests (like combat) that need a predictable outcome,
+by stubbing `Math.random` in the page rather than touching engine code.
+`playwright.config.ts` starts its own server on port 5180 so it never
+collides with one you're already running on 5173.
