@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getPageImage, savePageImage } from "../engine/pageImageStore";
 import { getBookPages, saveBookPage } from "../engine/storage";
 import { transcribePage } from "../engine/transcriptionApi";
 import type { TranscribedPage } from "../engine/types";
@@ -9,7 +10,8 @@ async function ensurePage(bookId: string, page: number): Promise<TranscribedPage
   const cached = getBookPages(bookId)[page];
   if (cached) return cached;
   const result = await transcribePage(bookId, page);
-  saveBookPage(bookId, result);
+  saveBookPage(bookId, { pdfPage: result.pdfPage, paragraphs: result.paragraphs });
+  if (result.imageDataUrl) await savePageImage(bookId, page, result.imageDataUrl);
   return result;
 }
 
@@ -88,32 +90,37 @@ export function PdfPageBrowser({
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [current, setCurrent] = useState<TranscribedPage | null>(null);
+  const [image, setImage] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const goTo = async (target: number) => {
     if (target < 1 || (totalPages && target > totalPages)) return;
     setPage(target);
+    setImage(undefined);
     const cached = getBookPages(bookId)[target];
     if (cached) {
       setCurrent(cached);
       setStatus("idle");
       setError(null);
-      return;
+    } else {
+      setStatus("loading");
+      setError(null);
+      setCurrent(null);
+      try {
+        const result = await transcribePage(bookId, target);
+        saveBookPage(bookId, { pdfPage: result.pdfPage, paragraphs: result.paragraphs });
+        if (result.imageDataUrl) await savePageImage(bookId, target, result.imageDataUrl);
+        setCurrent(result);
+        onTranscribed();
+        setStatus("idle");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to transcribe page.");
+        setStatus("error");
+        return;
+      }
     }
-    setStatus("loading");
-    setError(null);
-    setCurrent(null);
-    try {
-      const result = await transcribePage(bookId, target);
-      saveBookPage(bookId, result);
-      setCurrent(result);
-      onTranscribed();
-      setStatus("idle");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to transcribe page.");
-      setStatus("error");
-    }
+    setImage(await getPageImage(bookId, target));
   };
 
   return (
@@ -155,6 +162,7 @@ export function PdfPageBrowser({
           </div>
           {status === "loading" && <p className="muted">Transcribing…</p>}
           {status === "error" && error && <p className="luck-banner failure">{error}</p>}
+          {image && <img src={image} alt={`Scan of page ${page}`} className="pdf-browser-image" />}
           {current && (
             <div className="pdf-browser-content">
               {current.paragraphs.length === 0 && <p className="muted">No paragraphs found on this page.</p>}

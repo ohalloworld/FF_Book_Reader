@@ -131,3 +131,15 @@ export function saveBookOverride(bookId: string, paragraph: TranscribedParagraph
   overrides[paragraph.id] = paragraph;
   writeJson(`ff-reader:book-overrides:${bookId}`, overrides);
 }
+
+/** Clears a book's transcribed-page cache and manual corrections —
+ * used when the library entry itself is deleted, alongside clearing its
+ * save-game (clearGame) and its IndexedDB page images (pageImageStore). */
+export function deleteBookData(bookId: string): void {
+  try {
+    localStorage.removeItem(`ff-reader:book-pages:${bookId}`);
+    localStorage.removeItem(`ff-reader:book-overrides:${bookId}`);
+  } catch {
+    // ignore
+  }
+}

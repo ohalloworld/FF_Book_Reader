@@ -49,6 +49,18 @@ export function deriveBookSections(bookId: string): Record<SectionId, Section> {
   return sections;
 }
 
+/** Finds which PDF page a transcribed paragraph came from, so its page
+ * scan (artwork included) can be looked up and shown alongside the text.
+ * Undefined for a manually-typed/edited paragraph with no source page, or
+ * one that isn't transcribed yet. */
+export function findPageForParagraph(bookId: string, paragraphId: SectionId): number | undefined {
+  const pages = getBookPages(bookId);
+  for (const page of Object.values(pages)) {
+    if (page.paragraphs.some((p) => p.id === paragraphId)) return page.pdfPage;
+  }
+  return undefined;
+}
+
 /** Builds a playable Gamebook for a library entry, filling in any sections
  * that have been transcribed from its attached PDF so far. Anything not
  * yet transcribed still falls back to the blank placeholder in

@@ -111,20 +111,28 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   through to `useGameSession`'s blank-section fallback, so companion mode
   and transcribed content coexist paragraph by paragraph with no
   special-casing.
-- `server/bookTranscriptionPlugin.ts` exposes `POST /api/library/:id/pdf`
-  (stores an uploaded PDF on disk, in `.local-books/`, gitignored — never
-  committed, never re-uploaded on later requests), `GET
-  /api/library/:id/pdf-status` (page count), and `POST
-  /api/library/:id/transcribe-page` (renders one page, sends it to Claude
-  with a Zod schema — `server/pageTranscriptionSchema.ts` — asking for
-  every paragraph's text and outgoing choices, structured the same way the
-  rules importer does). `server/httpUtils.ts` holds the request-body and
-  path-safety helpers both server plugins share.
+- `server/bookTranscriptionPlugin.ts` exposes `POST`/`DELETE
+  /api/library/:id/pdf` (stores/removes an uploaded PDF on disk, in
+  `.local-books/`, gitignored — never committed, never re-uploaded on
+  later requests), `GET /api/library/:id/pdf-status` (page count), and
+  `POST /api/library/:id/transcribe-page` (renders one page — keeping that
+  same image for reuse — and sends it to Claude with a Zod schema —
+  `server/pageTranscriptionSchema.ts` — asking for every paragraph's text
+  and outgoing choices, structured the same way the rules importer does).
+  `server/httpUtils.ts` holds the request-body and path-safety helpers
+  both server plugins share.
 - `src/engine/transcriptionApi.ts` — client for those endpoints.
+  `src/engine/pageImageStore.ts` — an IndexedDB store just for the
+  rendered page images transcription returns; kept separate from the
+  (localStorage) text cache because images are far larger — an
+  illustrated book's images alone can be tens of MB, well past what
+  localStorage can hold, while a whole book's *text* is only a few
+  hundred KB and stays in `storage.ts` alongside everything else.
   `src/components/PdfPageTools.tsx` — the "which page is this" prompt
   shown on a blank section, and a separate **Browse PDF Pages** panel for
   flipping through pages (transcribing new ones, showing cached ones
-  instantly) without moving your actual position in the story.
+  instantly, page image included) without moving your actual position in
+  the story.
 - `src/components/Library.tsx` — lists the built-in demo plus your saved
   library books (`localStorage`, alongside saved rule sets), a form to add
   a new one (title, author, starting paragraph, rule set, optional PDF),
@@ -187,19 +195,28 @@ your own book, so it's a quick answer. Transcribing a page fills in every
 paragraph found there at once, so a handful of these questions cover a lot
 of the book. Once transcribed, a paragraph shows its real text and real
 choice buttons — click one like any authored section, no more typing
-numbers. Got a misread? **Edit this paragraph** fixes it by hand. Want to
+numbers. If the page had any artwork, **Show page artwork** displays the
+actual scanned page (art and text as printed — the same image already
+rendered for transcription, at no extra cost) underneath the transcribed
+text. Got a misread? **Edit this paragraph** fixes it by hand. Want to
 skim ahead or double-check something without moving your character? Open
-**Browse PDF Pages** and flip Prev/Next.
+**Browse PDF Pages** and flip Prev/Next — it shows each page's image too.
+
+Every transcribed page (text and image) is cached the moment it's read,
+so rereading a book — or replaying it — never re-sends anything to Claude
+for a page it's already seen. Deleting a book from the Library cleans up
+everything: its local PDF, its cached text, and its cached images.
 
 **Without a PDF (or for anything not transcribed yet):** the reader falls
 back to companion mode — follow the book's printed choice ("turn to 245")
 via the **Go to paragraph** box, or use **Companion Tools** to roll a
 test, adjust a stat, manage inventory, or fight a monster it describes.
 
-Transcribed text is real copyrighted book content, stored only in your
-browser's `localStorage` and, for the PDF itself, `.local-books/` on your
-disk — neither ever touches this git repo (both are gitignored) or
-anywhere outside your machine.
+Transcribed text and images are real copyrighted book content, stored
+only in your browser's `localStorage` (text) and IndexedDB (page images)
+and, for the PDF itself, `.local-books/` on your disk — none of it ever
+touches this git repo (both are gitignored) or anywhere outside your
+machine.
 
 ## Authoring a fully digitized book
 

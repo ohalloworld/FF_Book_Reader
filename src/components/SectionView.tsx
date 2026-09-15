@@ -79,12 +79,15 @@ export function SectionView({
   section,
   luckOutcome,
   onSaveOverride,
+  pageImage,
 }: {
   section: Section;
   luckOutcome: LuckOutcome | null;
   onSaveOverride?: (paragraph: TranscribedParagraph) => void;
+  pageImage?: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const [showArt, setShowArt] = useState(false);
 
   if (editing && onSaveOverride) {
     return (
@@ -114,11 +117,20 @@ export function SectionView({
         </p>
       )}
 
-      {onSaveOverride && (
-        <button type="button" className="link-button" onClick={() => setEditing(true)}>
-          {section.text.trim() ? "Edit this paragraph" : "Type it in by hand"}
-        </button>
-      )}
+      <div className="section-view-actions">
+        {onSaveOverride && (
+          <button type="button" className="link-button" onClick={() => setEditing(true)}>
+            {section.text.trim() ? "Edit this paragraph" : "Type it in by hand"}
+          </button>
+        )}
+        {pageImage && (
+          <button type="button" className="link-button" onClick={() => setShowArt((v) => !v)}>
+            {showArt ? "Hide page artwork" : "Show page artwork"}
+          </button>
+        )}
+      </div>
+
+      {showArt && pageImage && <img src={pageImage} alt={`Scan of the page for section ${section.id}`} className="section-art" />}
 
       {luckOutcome?.context === "general" && (
         <p className={"luck-banner" + (luckOutcome.success ? " success" : " failure")}>

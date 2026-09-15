@@ -32,14 +32,28 @@ export async function getPdfStatus(bookId: string): Promise<PdfStatus> {
   return readJsonOrThrow<PdfStatus>(response);
 }
 
+/** Deletes a book's stored PDF from the local server's disk — used when
+ * the library entry itself is removed, so its content doesn't linger. */
+export async function detachBookPdf(bookId: string): Promise<void> {
+  const response = await fetch(`/api/library/${bookId}/pdf`, { method: "DELETE" });
+  await readJsonOrThrow<{ ok: true }>(response);
+}
+
+export interface PageTranscriptionResult extends TranscribedPage {
+  /** The rendered page image (data URL) the transcription was read from —
+   * the same image, at zero extra cost, so it can be cached and shown as
+   * the book's own artwork. */
+  imageDataUrl?: string;
+}
+
 /** Renders one PDF page and sends it to Claude to transcribe its numbered
  * paragraphs (text + outgoing choices). Requires a PDF already attached
  * via attachBookPdf. */
-export async function transcribePage(bookId: string, page: number): Promise<TranscribedPage> {
+export async function transcribePage(bookId: string, page: number): Promise<PageTranscriptionResult> {
   const response = await fetch(`/api/library/${bookId}/transcribe-page`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ page }),
   });
-  return readJsonOrThrow<TranscribedPage>(response);
+  return readJsonOrThrow<PageTranscriptionResult>(response);
 }

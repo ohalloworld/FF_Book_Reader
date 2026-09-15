@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { deriveBookSections } from "../engine/library";
+import { deriveBookSections, findPageForParagraph } from "../engine/library";
+import { getPageImage } from "../engine/pageImageStore";
 import { saveBookOverride } from "../engine/storage";
 import { useGameSession } from "../engine/useGameSession";
 import { getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
@@ -30,8 +31,10 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
     };
   }, [initialBook.id, initialBook.isLibraryBook]);
 
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const refreshSections = useCallback(() => {
     setBook((prev) => ({ ...prev, sections: deriveBookSections(prev.id) }));
+    setRefreshVersion((v) => v + 1);
   }, []);
 
   const saveOverride = useCallback(
@@ -44,6 +47,28 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
 
   const session = useGameSession(book);
   const { character, currentSection } = session;
+
+  // Which PDF page (if any) the current paragraph was transcribed from —
+  // a cheap, pure lookup, safe to compute directly during render.
+  const pdfPage =
+    book.isLibraryBook && currentSection ? findPageForParagraph(book.id, currentSection.id) : undefined;
+
+  // The image itself needs an async IndexedDB read, so it's cached by page
+  // number and only ever updated from that read's resolution — never
+  // synchronously inside the effect — so `sectionImage` below stays a pure
+  // derived value.
+  const [imageByPage, setImageByPage] = useState<Record<number, string>>({});
+  useEffect(() => {
+    if (pdfPage === undefined || imageByPage[pdfPage] !== undefined) return;
+    let cancelled = false;
+    getPageImage(book.id, pdfPage).then((img) => {
+      if (!cancelled && img) setImageByPage((prev) => ({ ...prev, [pdfPage]: img }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [book.id, pdfPage, refreshVersion, imageByPage]);
+  const sectionImage = pdfPage !== undefined ? imageByPage[pdfPage] : undefined;
 
   if (!character || !currentSection) {
     return (
@@ -81,9 +106,11 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
         )}
 
         <SectionView
+          key={currentSection.id}
           section={currentSection}
           luckOutcome={session.lastLuckOutcome}
           onSaveOverride={book.isLibraryBook ? saveOverride : undefined}
+          pageImage={sectionImage}
         />
 
         {pdfStatus?.exists && isBlank && (

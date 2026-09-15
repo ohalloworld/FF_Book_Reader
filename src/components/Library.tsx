@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { slugify } from "../engine/parseRulesApi";
 import { availableRuleSets, buildGamebook, resolveRuleSet } from "../engine/library";
-import { deleteLibraryBook, listLibraryBooks, saveLibraryBook } from "../engine/storage";
-import { attachBookPdf, getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
+import { deleteBookImages } from "../engine/pageImageStore";
+import { clearGame, deleteBookData, deleteLibraryBook, listLibraryBooks, saveLibraryBook } from "../engine/storage";
+import { attachBookPdf, detachBookPdf, getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
 import type { Gamebook, LibraryBookEntry } from "../engine/types";
 import { testBook } from "../data/testBook";
 
@@ -69,8 +70,11 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
     setPdfFile(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     deleteLibraryBook(id);
+    deleteBookData(id);
+    clearGame(id);
+    await Promise.all([detachBookPdf(id).catch(() => {}), deleteBookImages(id)]);
     setBooks(listLibraryBooks());
   };
 
@@ -147,7 +151,7 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
                   />
                   {attaching === entry.id ? "Uploading…" : status?.exists ? "Replace PDF" : "Attach PDF"}
                 </label>
-                <button type="button" className="choice-button secondary" onClick={() => handleDelete(entry.id)}>
+                <button type="button" className="choice-button secondary" onClick={() => void handleDelete(entry.id)}>
                   Delete
                 </button>
               </span>

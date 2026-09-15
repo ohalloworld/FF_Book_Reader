@@ -543,6 +543,21 @@ p {
   white-space: pre-line;
 }
 
+.section-view-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.section-art {
+  display: block;
+  max-width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
 .luck-banner {
   font-style: italic;
   padding: 8px 12px;
@@ -706,6 +721,14 @@ p {
   justify-content: space-between;
   gap: 10px;
   font-size: 14px;
+}
+
+.pdf-browser-image {
+  display: block;
+  max-width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .pdf-browser-content {

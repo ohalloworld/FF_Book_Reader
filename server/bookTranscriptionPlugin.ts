@@ -123,7 +123,15 @@ export function bookTranscriptionPlugin(): Plugin {
               return;
             }
 
-            sendJson(res, 200, { pdfPage: page, paragraphs: response.parsed_output.paragraphs });
+            sendJson(res, 200, { pdfPage: page, paragraphs: response.parsed_output.paragraphs, imageDataUrl: dataUrl });
+            return;
+          }
+
+          if (action === "pdf" && req.method === "DELETE") {
+            await fs.unlink(bookPdfPath(bookId)).catch(() => {
+              // already gone — fine
+            });
+            sendJson(res, 200, { ok: true });
             return;
           }
 
