@@ -1,5 +1,65 @@
 import { useState } from "react";
+import { rollDice, type DiceRoll } from "../engine/dice";
 import type { RuleSet } from "../engine/types";
+
+function DiceRoller() {
+  const [count, setCount] = useState("2");
+  const [sides, setSides] = useState("6");
+  const [modifier, setModifier] = useState("0");
+  const [result, setResult] = useState<DiceRoll | null>(null);
+
+  const handleRoll = (e: React.FormEvent) => {
+    e.preventDefault();
+    const c = Math.min(Math.max(parseInt(count, 10) || 1, 1), 20);
+    const s = Math.min(Math.max(parseInt(sides, 10) || 6, 2), 100);
+    const m = parseInt(modifier, 10) || 0;
+    setResult(rollDice(c, s, m));
+  };
+
+  return (
+    <form className="dice-roller" onSubmit={handleRoll}>
+      <div className="dice-roller-inputs">
+        <input
+          type="number"
+          className="dice-roller-count"
+          min={1}
+          max={20}
+          value={count}
+          onChange={(e) => setCount(e.target.value)}
+          aria-label="Number of dice"
+        />
+        <span>D</span>
+        <input
+          type="number"
+          className="dice-roller-count"
+          min={2}
+          max={100}
+          value={sides}
+          onChange={(e) => setSides(e.target.value)}
+          aria-label="Sides per die"
+        />
+        <span>+</span>
+        <input
+          type="number"
+          className="dice-roller-count"
+          value={modifier}
+          onChange={(e) => setModifier(e.target.value)}
+          aria-label="Modifier"
+        />
+        <button type="submit" className="choice-button secondary">
+          Roll
+        </button>
+      </div>
+      {result && (
+        <p className="dice-roller-result">
+          {result.rolls.join(" + ")}
+          {result.modifier !== 0 && ` ${result.modifier > 0 ? "+" : "-"} ${Math.abs(result.modifier)}`} ={" "}
+          <strong>{result.total}</strong>
+        </p>
+      )}
+    </form>
+  );
+}
 
 interface CompanionToolsProps {
   ruleSet: RuleSet;
@@ -34,9 +94,11 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
     <div className="companion-tools">
       <h3>Companion Tools</h3>
       <p className="muted">
-        For tracking a real book's own paragraphs as you read them — roll a test whenever your book calls for one,
-        or start a fight against a monster the book describes.
+        For tracking a real book's own paragraphs as you read them — roll dice for anything the book asks for, roll
+        a named test, or start a fight against a monster the book describes.
       </p>
+
+      <DiceRoller />
 
       {ruleSet.tests.length > 0 && (
         <div className="companion-tests">

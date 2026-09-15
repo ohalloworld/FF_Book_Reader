@@ -10,6 +10,21 @@ export function sumDice(count: number): number {
   return total;
 }
 
+export interface DiceRoll {
+  rolls: number[];
+  modifier: number;
+  total: number;
+}
+
+/** Rolls `count` dice of `sides` plus a flat modifier, keeping each die's
+ * individual result (unlike rollFormula, which only returns the total) —
+ * for a manual "roll the dice" tool where seeing each die matters. */
+export function rollDice(count: number, sides: number, modifier = 0): DiceRoll {
+  const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides));
+  const total = rolls.reduce((sum, roll) => sum + roll, 0) + modifier;
+  return { rolls, modifier, total };
+}
+
 const FORMULA_RE = /^(\d*)D(\d+)\s*([+-]\s*\d+)?$/i;
 
 /** Evaluates a dice formula like "1D6+6", "2D6", "3D6-2", or a flat "12". */

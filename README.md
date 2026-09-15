@@ -143,10 +143,12 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   library books (`localStorage`, alongside saved rule sets), a form to add
   a new one (title, author, starting paragraph, rule set, optional PDF),
   and per-book Attach/Replace PDF.
-- `src/components/CompanionTools.tsx` — manual test rolls and the ad-hoc
-  combat form, shown during play; `CharacterSheet.tsx` takes an optional
-  `actions` prop for the inline stat/inventory edit controls (omitted in
-  the rules-sandbox, where the sheet stays read-only).
+- `src/components/CompanionTools.tsx` — a free-form dice roller (any count/
+  sides/modifier, e.g. for a "roll one die" instruction that isn't a named
+  test), manual test rolls, and the ad-hoc combat form, shown during play;
+  `CharacterSheet.tsx` takes an optional `actions` prop for the inline
+  stat/inventory edit controls (omitted in the rules-sandbox, where the
+  sheet stays read-only).
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
 - `vite.config.ts` — `server.host: true` (LAN access for phones) and
@@ -172,11 +174,14 @@ Open the "Import Book Rules" tab. Either:
 - **Paste the rules text** directly into the box.
 
 Then click **Parse Rules**. Claude extracts a structured `RuleSet` — review
-it, save it, and use **Try it out** to roll a test character and fight a
-sample monster under those exact rules. Saved rule sets persist in your
-browser's `localStorage`. The PDF never leaves your machine — extraction
-and page rendering happen in the local dev server, and only the rules text
-or page images you approve get sent to Claude for parsing.
+it, give it a name (defaults to whatever title Claude found, but you can
+rename it, including any rule set you've already saved), and use **Try it
+out** to roll a test character and fight a sample monster under those exact
+rules. Saved rule sets persist in your browser's `localStorage`, named for
+easy reuse in the Library's rule-set picker. The PDF never leaves your
+machine — extraction and page rendering happen in the local dev server, and
+only the rules text or page images you approve get sent to Claude for
+parsing.
 
 Note: this only extracts the *rules*, not a book's story text (which is
 copyrighted) — pairing an imported rule set with that book's actual section

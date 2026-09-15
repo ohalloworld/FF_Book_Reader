@@ -302,7 +302,37 @@ p {
 
 .saved-ruleset-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.ruleset-name-field {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.8;
+  margin-bottom: 12px;
+}
+
+.ruleset-name-input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-h);
+  padding: 6px 10px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.saved-ruleset-row .ruleset-name-input {
+  margin-top: 0;
+  font-size: 15px;
+  font-weight: normal;
+  flex: 1;
 }
 
 .sandbox-grid {
@@ -766,6 +796,39 @@ p {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.dice-roller {
+  margin-bottom: 16px;
+}
+
+.dice-roller-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dice-roller-count {
+  width: 56px;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  text-align: center;
+}
+
+.dice-roller-result {
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.dice-roller-result strong {
+  color: var(--accent);
+  font-size: 18px;
 }
 
 .companion-combat-form {
