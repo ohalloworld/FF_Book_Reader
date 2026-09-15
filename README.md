@@ -78,10 +78,15 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   outputs, so parsing is reliable JSON, not free text — and your API key
   stays in this Node process and is never sent to the browser. Only active
   under `npm run dev`.
-- `server/rulesApiPlugin.ts` also exposes `POST /api/extract-pdf-text`,
-  which reads an uploaded PDF's text per-page (via `pdf-parse`) entirely
-  in-memory on your machine — the PDF itself is never written to disk or
-  sent anywhere.
+- `server/rulesApiPlugin.ts` also exposes `POST /api/extract-pdf-text`
+  (per-page text extraction via `pdf-parse`) and `POST /api/render-pdf-pages`
+  (renders a page range as PNG images, for scanned PDFs with no text
+  layer — `pdf-parse` wraps `pdfjs-dist`, which can rasterize pages
+  directly, no separate rendering library needed). Both run entirely
+  in-memory on your machine; the PDF itself is never written to disk or
+  sent anywhere. `/api/parse-rules` accepts either `rulesText` or
+  `pageImages` and builds the matching (text-only or multimodal) Claude
+  request.
 - `src/components/RulesImporter.tsx` + `PdfImportPanel.tsx` +
   `RuleSetSandbox.tsx` — upload a book's PDF (or paste text directly), pick
   the page range covering its rules section, parse it, review the
@@ -100,16 +105,24 @@ Open the "Import Book Rules" tab. Either:
 
 - **Upload a PDF** of a book you own. Rules and character-sheet
   instructions are typically the first 10–15 pages, before the numbered
-  story sections start — pick a page range, check the preview shows rules
-  text (not story text), and click **Use this text**; or
+  story sections start — pick a page range and check the preview shows
+  rules text (not story text).
+  - If the PDF has a real text layer, click **Use this text**.
+  - If it's a **scanned PDF** (a photo/scan with no selectable text — the
+    app will warn you when extraction comes back empty), click **Scanned
+    PDF? Parse from page images** instead. This renders the selected
+    pages as images (via `POST /api/render-pdf-pages`, using `pdf-parse`'s
+    screenshot support — still entirely on your machine) and sends those
+    to Claude directly; Claude reads the rules text out of the pictures
+    itself, no separate OCR step needed.
 - **Paste the rules text** directly into the box.
 
 Then click **Parse Rules**. Claude extracts a structured `RuleSet` — review
 it, save it, and use **Try it out** to roll a test character and fight a
 sample monster under those exact rules. Saved rule sets persist in your
-browser's `localStorage`. The PDF and its text never leave your machine —
-extraction happens in the local dev server, and only the short rules text
-you approve gets sent to Claude for parsing.
+browser's `localStorage`. The PDF never leaves your machine — extraction
+and page rendering happen in the local dev server, and only the rules text
+or page images you approve get sent to Claude for parsing.
 
 Note: this only extracts the *rules*, not a book's story text (which is
 copyrighted) — pairing an imported rule set with that book's actual section

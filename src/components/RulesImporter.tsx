@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { parseRulesText, slugify } from "../engine/parseRulesApi";
+import { parseRulesFromImages, parseRulesText, slugify } from "../engine/parseRulesApi";
 import { deleteRuleSet, listSavedRuleSets, saveRuleSet } from "../engine/storage";
 import type { RuleSet } from "../engine/types";
 import { PdfImportPanel } from "./PdfImportPanel";
@@ -10,18 +10,31 @@ type Status = "idle" | "loading" | "error";
 
 export function RulesImporter() {
   const [rulesText, setRulesText] = useState("");
+  const [pageImages, setPageImages] = useState<string[] | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<RuleSet | null>(null);
   const [saved, setSaved] = useState<RuleSet[]>(() => listSavedRuleSets());
   const [previewing, setPreviewing] = useState<RuleSet | null>(null);
 
+  const handleUseText = (text: string) => {
+    setRulesText(text);
+    setPageImages(null);
+  };
+
+  const handleUseImages = (images: string[]) => {
+    setPageImages(images);
+    setRulesText("");
+  };
+
+  const canParse = pageImages ? pageImages.length > 0 : Boolean(rulesText.trim());
+
   const handleParse = async () => {
-    if (!rulesText.trim()) return;
+    if (!canParse) return;
     setStatus("loading");
     setError(null);
     try {
-      const extracted = await parseRulesText(rulesText);
+      const extracted = pageImages ? await parseRulesFromImages(pageImages) : await parseRulesText(rulesText);
       const ruleSet: RuleSet = { ...extracted, id: slugify(extracted.bookTitle), source: "imported" };
       setDraft(ruleSet);
       setStatus("idle");
@@ -58,19 +71,29 @@ export function RulesImporter() {
         Upload a book's PDF, pick the page range covering its rules section, and use the extracted text below. The
         PDF is read entirely on your machine and is never uploaded anywhere else.
       </p>
-      <PdfImportPanel onUseText={setRulesText} />
+      <PdfImportPanel onUseText={handleUseText} onUseImages={handleUseImages} />
 
       <h2 className="importer-subhead">Rules Text</h2>
-      <textarea
-        className="rules-textarea"
-        placeholder="Paste the book's rules section here..."
-        value={rulesText}
-        onChange={(e) => setRulesText(e.target.value)}
-        rows={12}
-      />
+      {pageImages ? (
+        <p className="muted">
+          Using {pageImages.length} page image{pageImages.length === 1 ? "" : "s"} instead of text — Claude will
+          read the rules directly from the pictures.{" "}
+          <button type="button" className="link-button" onClick={() => setPageImages(null)}>
+            Clear and use text instead
+          </button>
+        </p>
+      ) : (
+        <textarea
+          className="rules-textarea"
+          placeholder="Paste the book's rules section here..."
+          value={rulesText}
+          onChange={(e) => setRulesText(e.target.value)}
+          rows={12}
+        />
+      )}
 
       <div className="importer-actions">
-        <button type="button" className="choice-button" disabled={status === "loading" || !rulesText.trim()} onClick={handleParse}>
+        <button type="button" className="choice-button" disabled={status === "loading" || !canParse} onClick={handleParse}>
           {status === "loading" ? "Parsing with Claude…" : "Parse Rules"}
         </button>
       </div>

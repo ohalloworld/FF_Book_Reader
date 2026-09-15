@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { extractPdfText, type PdfPage } from "../engine/parseRulesApi";
+import { extractPdfText, renderPdfPages, type PdfPage } from "../engine/parseRulesApi";
 
 type Status = "idle" | "loading" | "error";
 
-export function PdfImportPanel({ onUseText }: { onUseText: (text: string) => void }) {
+interface PdfImportPanelProps {
+  onUseText: (text: string) => void;
+  onUseImages: (images: string[]) => void;
+}
+
+export function PdfImportPanel({ onUseText, onUseImages }: PdfImportPanelProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [pages, setPages] = useState<PdfPage[] | null>(null);
   const [total, setTotal] = useState(0);
   const [title, setTitle] = useState<string | undefined>();
@@ -14,12 +20,19 @@ export function PdfImportPanel({ onUseText }: { onUseText: (text: string) => voi
   const [fromPage, setFromPage] = useState(1);
   const [toPage, setToPage] = useState(1);
 
-  const handleFile = async (file: File) => {
+  const [renderStatus, setRenderStatus] = useState<Status>("idle");
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderedImages, setRenderedImages] = useState<string[] | null>(null);
+
+  const handleFile = async (selected: File) => {
     setStatus("loading");
     setError(null);
-    setFileName(file.name);
+    setFile(selected);
+    setFileName(selected.name);
+    setRenderedImages(null);
+    setRenderError(null);
     try {
-      const result = await extractPdfText(file);
+      const result = await extractPdfText(selected);
       setPages(result.pages);
       setTotal(result.total);
       setTitle(result.title);
@@ -45,6 +58,21 @@ export function PdfImportPanel({ onUseText }: { onUseText: (text: string) => voi
         .trim()
     : "";
 
+  const handleRenderImages = async () => {
+    if (!file) return;
+    setRenderStatus("loading");
+    setRenderError(null);
+    try {
+      const images = await renderPdfPages(file, clampedFrom, clampedTo);
+      setRenderedImages(images);
+      setRenderStatus("idle");
+    } catch (err) {
+      setRenderedImages(null);
+      setRenderError(err instanceof Error ? err.message : "Failed to render pages.");
+      setRenderStatus("error");
+    }
+  };
+
   return (
     <div className="pdf-import">
       <label className="pdf-file-label">
@@ -53,8 +81,8 @@ export function PdfImportPanel({ onUseText }: { onUseText: (text: string) => voi
           accept="application/pdf"
           className="pdf-file-input"
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
+            const selected = e.target.files?.[0];
+            if (selected) void handleFile(selected);
           }}
         />
         {status === "loading" ? "Reading PDF…" : "Choose a PDF"}
@@ -110,7 +138,32 @@ export function PdfImportPanel({ onUseText }: { onUseText: (text: string) => voi
             >
               Use this text
             </button>
+            <button
+              type="button"
+              className="choice-button secondary"
+              disabled={renderStatus === "loading"}
+              onClick={handleRenderImages}
+            >
+              {renderStatus === "loading" ? "Rendering pages…" : "Scanned PDF? Parse from page images"}
+            </button>
           </div>
+
+          {renderStatus === "error" && renderError && <p className="luck-banner failure">{renderError}</p>}
+
+          {renderedImages && renderedImages.length > 0 && (
+            <>
+              <div className="pdf-image-thumbs">
+                {renderedImages.map((img, i) => (
+                  <img key={i} src={img} alt={`Page ${clampedFrom + i}`} />
+                ))}
+              </div>
+              <div className="importer-actions">
+                <button type="button" className="choice-button secondary" onClick={() => onUseImages(renderedImages)}>
+                  Use these {renderedImages.length} page image{renderedImages.length === 1 ? "" : "s"}
+                </button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
