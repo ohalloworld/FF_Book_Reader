@@ -211,7 +211,8 @@ actual scanned page (art and text as printed — the same image already
 rendered for transcription, at no extra cost) underneath the transcribed
 text. Got a misread? **Edit this paragraph** fixes it by hand. Want to
 skim ahead or double-check something without moving your character? Open
-**Browse PDF Pages** and flip Prev/Next — it shows each page's image too.
+**Browse PDF Pages** and flip Prev/Next, or type a page number into **Go to
+page** to jump straight there — it shows each page's image too.
 
 Every transcribed page (text and image) is cached the moment it's read,
 so rereading a book — or replaying it — never re-sends anything to Claude

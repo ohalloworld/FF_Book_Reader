@@ -93,6 +93,7 @@ export function PdfPageBrowser({
   const [image, setImage] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [pageJump, setPageJump] = useState("");
 
   const goTo = async (target: number) => {
     if (target < 1 || (totalPages && target > totalPages)) return;
@@ -121,6 +122,14 @@ export function PdfPageBrowser({
       }
     }
     setImage(await getPageImage(bookId, target));
+  };
+
+  const handlePageJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = Number(pageJump);
+    if (!Number.isInteger(target) || target < 1) return;
+    void goTo(target);
+    setPageJump("");
   };
 
   return (
@@ -160,6 +169,21 @@ export function PdfPageBrowser({
               Next page →
             </button>
           </div>
+          <form className="pdf-browser-jump" onSubmit={handlePageJump}>
+            <label htmlFor="pdf-page-jump-input">Go to page</label>
+            <input
+              id="pdf-page-jump-input"
+              type="number"
+              min={1}
+              max={totalPages}
+              placeholder="e.g. 42"
+              value={pageJump}
+              onChange={(e) => setPageJump(e.target.value)}
+            />
+            <button type="submit" className="choice-button secondary" disabled={!pageJump.trim() || status === "loading"}>
+              Go
+            </button>
+          </form>
           {status === "loading" && <p className="muted">Transcribing…</p>}
           {status === "error" && error && <p className="luck-banner failure">{error}</p>}
           {image && <img src={image} alt={`Scan of page ${page}`} className="pdf-browser-image" />}
