@@ -111,19 +111,39 @@ p {
   margin-top: 16px;
 }
 
+.library-book {
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
 .library-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 0;
-  border-bottom: 1px dashed var(--border);
 }
 
 .library-row-actions {
   display: flex;
   gap: 8px;
+}
+
+.bulk-transcribe {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.bulk-transcribe-progress,
+.bulk-transcribe-failed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.muted.small {
+  font-size: 13px;
 }
 
 .library-create-form {

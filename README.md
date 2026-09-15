@@ -142,7 +142,11 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
 - `src/components/Library.tsx` — lists the built-in demo plus your saved
   library books (`localStorage`, alongside saved rule sets), a form to add
   a new one (title, author, starting paragraph, rule set, optional PDF),
-  and per-book Attach/Replace PDF.
+  and per-book Attach/Replace PDF. `src/components/BulkTranscribe.tsx` adds
+  a per-book **Pre-transcribe entire book** control (shown once a PDF's
+  attached) that works through every untranscribed page up front — with a
+  rough cost estimate, live progress, cancel, and per-page retry — so a
+  book can be read later with no server reachable at all.
 - `src/components/CompanionTools.tsx` — a free-form dice roller (any count/
   sides/modifier, e.g. for a "roll one die" instruction that isn't a named
   test), manual test rolls, and the ad-hoc combat form, shown during play;
@@ -218,6 +222,27 @@ Every transcribed page (text and image) is cached the moment it's read,
 so rereading a book — or replaying it — never re-sends anything to Claude
 for a page it's already seen. Deleting a book from the Library cleans up
 everything: its local PDF, its cached text, and its cached images.
+
+### Reading without the server
+
+Transcribing a *new* page always needs the dev server (and your computer)
+reachable — that's the one Claude call in the whole app. A page you've
+*already* transcribed doesn't: its text and image live in your phone's own
+`localStorage`/IndexedDB, and the PWA's service worker caches the app
+itself, so anything already read keeps working with your computer off or
+out of WiFi range. Only new pages need the server.
+
+So before taking a book somewhere without the server (a trip, a
+dead-zone), open its row in the **Library** and use **Pre-transcribe
+entire book** (shown once a PDF's attached) — it works through every page
+up front, shows a running cost estimate first and live progress as it
+goes, can be cancelled and resumed, and retries individually if a page
+fails. Every page is still only ever sent to Claude once: running it again
+later just tops up whatever's new.
+
+For the built-in demo (and any Library book you write by hand instead of
+transcribing), everything's already baked into the app bundle the service
+worker caches, so those play fully offline with no pre-step at all.
 
 **Without a PDF (or for anything not transcribed yet):** the reader falls
 back to companion mode — follow the book's printed choice ("turn to 245")

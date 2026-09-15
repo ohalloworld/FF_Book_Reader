@@ -6,6 +6,7 @@ import { clearGame, deleteBookData, deleteLibraryBook, listLibraryBooks, saveLib
 import { attachBookPdf, detachBookPdf, getPdfStatus, type PdfStatus } from "../engine/transcriptionApi";
 import type { Gamebook, LibraryBookEntry } from "../engine/types";
 import { testBook } from "../data/testBook";
+import { BulkTranscribeControl } from "./BulkTranscribe";
 
 function uniqueId(base: string, existing: string[]): string {
   if (!existing.includes(base)) return base;
@@ -114,47 +115,54 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
       {error && <p className="luck-banner failure">{error}</p>}
 
       <div className="library-list">
-        <div className="library-row">
-          <div>
-            <strong>{testBook.title}</strong>
-            <span className="muted"> — {testBook.author} (built-in demo, fully authored)</span>
+        <div className="library-book">
+          <div className="library-row">
+            <div>
+              <strong>{testBook.title}</strong>
+              <span className="muted"> — {testBook.author} (built-in demo, fully authored)</span>
+            </div>
+            <button type="button" className="choice-button secondary" onClick={() => onPlay(testBook)}>
+              Play
+            </button>
           </div>
-          <button type="button" className="choice-button secondary" onClick={() => onPlay(testBook)}>
-            Play
-          </button>
         </div>
 
         {books.map((entry) => {
           const ruleSet = resolveRuleSet(entry.ruleSetId);
           const status = pdfStatuses[entry.id];
           return (
-            <div className="library-row" key={entry.id}>
-              <div>
-                <strong>{entry.title}</strong>
-                {entry.author && <span className="muted"> — {entry.author}</span>}
-                <span className="muted"> ({ruleSet?.bookTitle ?? "missing rule set"})</span>
-                {status?.exists && <span className="muted"> · PDF attached, {status.totalPages} pages</span>}
+            <div className="library-book" key={entry.id}>
+              <div className="library-row">
+                <div>
+                  <strong>{entry.title}</strong>
+                  {entry.author && <span className="muted"> — {entry.author}</span>}
+                  <span className="muted"> ({ruleSet?.bookTitle ?? "missing rule set"})</span>
+                  {status?.exists && <span className="muted"> · PDF attached, {status.totalPages} pages</span>}
+                </div>
+                <span className="library-row-actions">
+                  <button type="button" className="choice-button secondary" onClick={() => handlePlay(entry)}>
+                    Play
+                  </button>
+                  <label className="pdf-file-label small">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="pdf-file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleAttachExisting(entry.id, file);
+                      }}
+                    />
+                    {attaching === entry.id ? "Uploading…" : status?.exists ? "Replace PDF" : "Attach PDF"}
+                  </label>
+                  <button type="button" className="choice-button secondary" onClick={() => void handleDelete(entry.id)}>
+                    Delete
+                  </button>
+                </span>
               </div>
-              <span className="library-row-actions">
-                <button type="button" className="choice-button secondary" onClick={() => handlePlay(entry)}>
-                  Play
-                </button>
-                <label className="pdf-file-label small">
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="pdf-file-input"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleAttachExisting(entry.id, file);
-                    }}
-                  />
-                  {attaching === entry.id ? "Uploading…" : status?.exists ? "Replace PDF" : "Attach PDF"}
-                </label>
-                <button type="button" className="choice-button secondary" onClick={() => void handleDelete(entry.id)}>
-                  Delete
-                </button>
-              </span>
+              {status?.exists && status.totalPages !== undefined && (
+                <BulkTranscribeControl bookId={entry.id} totalPages={status.totalPages} />
+              )}
             </div>
           );
         })}
