@@ -1232,6 +1232,20 @@ p {
   font-size: 18px;
 }
 
+.pending-monsters-list {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.pending-monsters-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 0;
+}
+
 .companion-combat-form {
   display: flex;
   flex-wrap: wrap;
@@ -1297,6 +1311,30 @@ p {
   margin-top: 20px;
   border-top: 1px solid var(--border);
   padding-top: 16px;
+}
+
+.combat-modifiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.combat-modifier {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.combat-modifier-value {
+  min-width: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .monster-row {

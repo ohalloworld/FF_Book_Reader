@@ -61,10 +61,15 @@ function DiceRoller() {
   );
 }
 
+export interface ManualMonster {
+  name: string;
+  stats: Record<string, number>;
+}
+
 interface CompanionToolsProps {
   ruleSet: RuleSet;
   onRollTest: (testKey: string) => void;
-  onStartCombat: (name: string, stats: Record<string, number>) => void;
+  onStartCombat: (monsters: ManualMonster[]) => void;
   combatActive: boolean;
 }
 
@@ -72,19 +77,41 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
   const [monsterName, setMonsterName] = useState("");
   const [attackValue, setAttackValue] = useState("");
   const [damageValue, setDamageValue] = useState("");
+  const [pending, setPending] = useState<ManualMonster[]>([]);
 
   const attackStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.attackStat);
   const damageStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.damageStat);
 
-  const canStart = monsterName.trim() && attackValue.trim() && damageValue.trim();
+  const currentFilled = monsterName.trim() && attackValue.trim() && damageValue.trim();
+  const canStart = pending.length > 0 || currentFilled;
+
+  const currentAsMonster = (): ManualMonster | null =>
+    currentFilled
+      ? {
+          name: monsterName.trim(),
+          stats: {
+            [ruleSet.combat.attackStat]: Number(attackValue) || 0,
+            [ruleSet.combat.damageStat]: Number(damageValue) || 0,
+          },
+        }
+      : null;
+
+  const handleAddAnother = () => {
+    const monster = currentAsMonster();
+    if (!monster) return;
+    setPending((p) => [...p, monster]);
+    setMonsterName("");
+    setAttackValue("");
+    setDamageValue("");
+  };
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canStart) return;
-    onStartCombat(monsterName.trim(), {
-      [ruleSet.combat.attackStat]: Number(attackValue) || 0,
-      [ruleSet.combat.damageStat]: Number(damageValue) || 0,
-    });
+    const monster = currentAsMonster();
+    const monsters = monster ? [...pending, monster] : pending;
+    if (monsters.length === 0) return;
+    onStartCombat(monsters);
+    setPending([]);
     setMonsterName("");
     setAttackValue("");
     setDamageValue("");
@@ -111,29 +138,52 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
       )}
 
       {!combatActive && (
-        <form className="companion-combat-form" onSubmit={handleStart}>
-          <input
-            type="text"
-            placeholder="Monster name"
-            value={monsterName}
-            onChange={(e) => setMonsterName(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder={attackStat?.label ?? "Attack"}
-            value={attackValue}
-            onChange={(e) => setAttackValue(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder={damageStat?.label ?? "Stamina"}
-            value={damageValue}
-            onChange={(e) => setDamageValue(e.target.value)}
-          />
-          <button type="submit" className="choice-button secondary" disabled={!canStart}>
-            Start Combat
-          </button>
-        </form>
+        <div className="companion-combat">
+          {pending.length > 0 && (
+            <ul className="pending-monsters-list">
+              {pending.map((m, i) => (
+                <li key={i}>
+                  {m.name} ({attackStat?.label ?? "Attack"} {m.stats[ruleSet.combat.attackStat]}, {damageStat?.label ?? "Stamina"}{" "}
+                  {m.stats[ruleSet.combat.damageStat]})
+                  <button
+                    type="button"
+                    className="item-remove-button"
+                    aria-label={`Remove ${m.name}`}
+                    onClick={() => setPending((p) => p.filter((_, idx) => idx !== i))}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form className="companion-combat-form" onSubmit={handleStart}>
+            <input
+              type="text"
+              placeholder="Monster name"
+              value={monsterName}
+              onChange={(e) => setMonsterName(e.target.value)}
+            />
+            <input
+              type="number"
+              placeholder={attackStat?.label ?? "Attack"}
+              value={attackValue}
+              onChange={(e) => setAttackValue(e.target.value)}
+            />
+            <input
+              type="number"
+              placeholder={damageStat?.label ?? "Stamina"}
+              value={damageValue}
+              onChange={(e) => setDamageValue(e.target.value)}
+            />
+            <button type="button" className="choice-button secondary" disabled={!currentFilled} onClick={handleAddAnother}>
+              Add another monster
+            </button>
+            <button type="submit" className="choice-button" disabled={!canStart}>
+              Start Combat
+            </button>
+          </form>
+        </div>
       )}
     </div>
   );

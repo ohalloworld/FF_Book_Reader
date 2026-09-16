@@ -1,3 +1,4 @@
+import type { CombatModifiers } from "../engine/combat";
 import type { RuleSet } from "../engine/types";
 import type { CombatState, LuckOutcomeContext } from "../engine/useGameSession";
 
@@ -8,9 +9,25 @@ interface CombatPanelProps {
   onFlee: () => void;
   onEndCombat: () => void;
   onUseLuck: (context: LuckOutcomeContext) => void;
+  onAdjustModifier: (side: keyof CombatModifiers, delta: number) => void;
 }
 
-export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onUseLuck }: CombatPanelProps) {
+function ModifierStepper({ label, value, onAdjust }: { label: string; value: number; onAdjust: (delta: number) => void }) {
+  return (
+    <div className="combat-modifier">
+      <span>{label}</span>
+      <button type="button" className="stat-adjust-button" onClick={() => onAdjust(-1)} aria-label={`Decrease ${label}`}>
+        −
+      </button>
+      <span className="combat-modifier-value">{value > 0 ? `+${value}` : value}</span>
+      <button type="button" className="stat-adjust-button" onClick={() => onAdjust(1)} aria-label={`Increase ${label}`}>
+        +
+      </button>
+    </div>
+  );
+}
+
+export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onUseLuck, onAdjustModifier }: CombatPanelProps) {
   const { lastRound } = combat;
   const luckContext: LuckOutcomeContext | null =
     lastRound?.outcome === "player" ? "combat-damage" : lastRound?.outcome === "monster" ? "combat-heal" : null;
@@ -21,6 +38,12 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onU
   return (
     <div className="combat-panel">
       <h3>Combat</h3>
+
+      <div className="combat-modifiers">
+        <ModifierStepper label="Your rolls" value={combat.modifiers.player} onAdjust={(d) => onAdjustModifier("player", d)} />
+        <ModifierStepper label="Enemy rolls" value={combat.modifiers.monster} onAdjust={(d) => onAdjustModifier("monster", d)} />
+      </div>
+
       {combat.monsters.map((monster) => {
         const defeated = monster.currentDamageStat <= 0;
         const maxDamageStat = monster.stats[ruleSet.combat.damageStat] || 1;
@@ -53,6 +76,9 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onU
           {lastRound.outcome === "player" && "You wound your foe!"}
           {lastRound.outcome === "monster" && "You are wounded!"}
           {lastRound.outcome === "draw" && "Neither side lands a blow."}
+          {lastRound.additionalAttackers && lastRound.additionalAttackers.length > 0 && (
+            <> Also hit by {lastRound.additionalAttackers.join(", ")}!</>
+          )}
         </p>
       )}
 

@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
-import { findTest, resolveCombatRound, resolveTest, type CombatRoundResult } from "./combat";
+import {
+  findTest,
+  noCombatModifiers,
+  resolveCombatRound,
+  resolveTest,
+  rollMonsterAttackStrength,
+  type CombatModifiers,
+  type CombatRoundResult,
+} from "./combat";
 import { applyEffect, applyEffects, availableChoices, cloneCharacter, isAlive } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
 import type { Character, Choice, Gamebook, Monster, Section, SectionId } from "./types";
@@ -8,12 +16,22 @@ export interface CombatMonsterState extends Monster {
   currentDamageStat: number;
 }
 
+/** A round's result, plus any other living monster that also landed a hit
+ * this round (see fightRound) — every monster the player isn't targeting
+ * still swings at them, using the player's same Attack Strength roll. */
+export interface CombatRoundSummary extends CombatRoundResult {
+  additionalAttackers?: string[];
+}
+
 export interface CombatState {
   monsters: CombatMonsterState[];
   fleeGoTo?: SectionId;
   onDefeatGoTo?: SectionId;
-  lastRound?: CombatRoundResult;
+  lastRound?: CombatRoundSummary;
   luckUsedThisRound?: boolean;
+  /** Flat Attack Strength adjustments for this fight — set from the Combat
+   * panel for a book's own encounter modifiers, applied every round. */
+  modifiers: CombatModifiers;
   /** True for a combat started manually (Companion Tools) rather than
    * from an authored Section.encounter — changes how "Flee" behaves. */
   manual?: boolean;
@@ -49,6 +67,7 @@ function startCombat(section: Section, damageStat: string): CombatState | undefi
     monsters: section.encounter.monsters.map((m) => ({ ...m, currentDamageStat: m.stats[damageStat] ?? 0 })),
     fleeGoTo: section.encounter.fleeGoTo,
     onDefeatGoTo: section.encounter.onDefeatGoTo,
+    modifiers: noCombatModifiers,
   };
 }
 
@@ -180,7 +199,22 @@ export function useGameSession(book: Gamebook) {
       const monster = combat.monsters.find((m) => m.id === monsterId);
       if (!monster || monster.currentDamageStat <= 0) return;
 
-      const result = resolveCombatRound(character, monster, ruleSet.combat);
+      const result = resolveCombatRound(character, monster, ruleSet.combat, combat.modifiers);
+
+      // Every OTHER living monster in the encounter still swings at the
+      // player this round, not just the one being fought — each rolls its
+      // own Attack Strength against the player's roll from this round.
+      let totalDamageTaken = result.damageTaken;
+      const additionalAttackers: string[] = [];
+      for (const other of combat.monsters) {
+        if (other.id === monsterId || other.currentDamageStat <= 0) continue;
+        const otherAttackStrength = rollMonsterAttackStrength(other, ruleSet.combat, combat.modifiers.monster);
+        if (otherAttackStrength > result.playerAttackStrength) {
+          totalDamageTaken += ruleSet.combat.damagePerHit;
+          additionalAttackers.push(other.name);
+        }
+      }
+
       const updatedChar = cloneCharacter(character);
       const playerBlock = updatedChar.pools[ruleSet.combat.damageStat];
       if (playerBlock) {
@@ -188,7 +222,7 @@ export function useGameSession(book: Gamebook) {
           ...updatedChar.pools,
           [ruleSet.combat.damageStat]: {
             ...playerBlock,
-            current: Math.max(0, playerBlock.current - result.damageTaken),
+            current: Math.max(0, playerBlock.current - totalDamageTaken),
           },
         };
       }
@@ -200,7 +234,12 @@ export function useGameSession(book: Gamebook) {
       );
 
       setCharacter(updatedChar);
-      setCombat({ ...combat, monsters: updatedMonsters, lastRound: result, luckUsedThisRound: false });
+      setCombat({
+        ...combat,
+        monsters: updatedMonsters,
+        lastRound: { ...result, additionalAttackers },
+        luckUsedThisRound: false,
+      });
       persist(updatedChar, currentSectionId);
 
       if (!isAlive(updatedChar, ruleSet) && combat.onDefeatGoTo) {
@@ -209,6 +248,14 @@ export function useGameSession(book: Gamebook) {
     },
     [character, combat, currentSectionId, enterSection, persist, ruleSet],
   );
+
+  /** Adjusts a flat Attack Strength modifier for the rest of this fight —
+   * for a book's own encounter modifiers ("+2 for the ambush", "-1 in the
+   * dark"), applied to every subsequent round until changed or the fight
+   * ends. */
+  const adjustCombatModifier = useCallback((side: keyof CombatModifiers, delta: number) => {
+    setCombat((prev) => (prev ? { ...prev, modifiers: { ...prev.modifiers, [side]: prev.modifiers[side] + delta } } : prev));
+  }, []);
 
   const fleeCombat = useCallback(() => {
     if (!character || !combat?.fleeGoTo) return;
@@ -221,22 +268,22 @@ export function useGameSession(book: Gamebook) {
     setCombat(undefined);
   }, []);
 
-  /** Starts a combat against a monster the reader types in themselves,
-   * for a book whose encounters aren't digitized. No fleeGoTo/onDefeatGoTo
-   * — there's nowhere authored to send the player, so fleeing just ends
-   * the fight (endCombat) and a defeat just leaves STAMINA at 0 for the
-   * reader to act on themselves. */
+  /** Starts a combat against one or more monsters the reader types in
+   * themselves, for a book whose encounters aren't digitized. No
+   * fleeGoTo/onDefeatGoTo — there's nowhere authored to send the player,
+   * so fleeing just ends the fight (endCombat) and a defeat just leaves
+   * STAMINA at 0 for the reader to act on themselves. */
   const startManualCombat = useCallback(
-    (name: string, stats: Record<string, number>) => {
+    (monsters: { name: string; stats: Record<string, number> }[]) => {
+      if (monsters.length === 0) return;
       setCombat({
-        monsters: [
-          {
-            id: `manual-${Date.now()}`,
-            name,
-            stats,
-            currentDamageStat: stats[ruleSet.combat.damageStat] ?? 0,
-          },
-        ],
+        monsters: monsters.map((monster, i) => ({
+          id: `manual-${Date.now()}-${i}`,
+          name: monster.name,
+          stats: monster.stats,
+          currentDamageStat: monster.stats[ruleSet.combat.damageStat] ?? 0,
+        })),
+        modifiers: noCombatModifiers,
         manual: true,
       });
       setLastLuckOutcome(null);
@@ -402,6 +449,7 @@ export function useGameSession(book: Gamebook) {
     fleeCombat,
     endCombat,
     startManualCombat,
+    adjustCombatModifier,
     rollTest,
     adjustPool,
     adjustCounter,

@@ -146,6 +146,7 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
             onFlee={session.fleeCombat}
             onEndCombat={session.endCombat}
             onUseLuck={session.useLuckOnRound}
+            onAdjustModifier={session.adjustCombatModifier}
           />
         )}
 
