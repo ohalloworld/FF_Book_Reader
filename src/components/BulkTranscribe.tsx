@@ -3,13 +3,15 @@ import { savePageImage } from "../engine/pageImageStore";
 import { getBookPages, saveBookPage } from "../engine/storage";
 import { transcribePage } from "../engine/transcriptionApi";
 
-// Rough, conservative ballpark for the default model (claude-opus-5): one
-// page image (roughly 800-1500 vision tokens at the resolution this app
-// renders pages) plus a short system prompt and a few hundred output
-// tokens works out to about 1-3 cents per page. Real cost varies with page
-// density and is lower if ANTHROPIC_MODEL is overridden to a cheaper
-// model — this is only a pre-flight ballpark, not a bill.
-const EST_COST_PER_PAGE = 0.02;
+// Rough, conservative ballpark for the default model (claude-opus-5): each
+// transcription call sends two page images (the target page, plus the
+// next one for context — see bookTranscriptionPlugin.ts — so a paragraph
+// crossing a page boundary doesn't get cut off), roughly 1600-3000 vision
+// tokens total, plus a short system prompt and a few hundred output
+// tokens — about 2-4 cents per page. Real cost varies with page density
+// and is lower if ANTHROPIC_MODEL is overridden to a cheaper model — this
+// is only a pre-flight ballpark, not a bill.
+const EST_COST_PER_PAGE = 0.03;
 
 /** Works through every untranscribed page of a book's PDF up front — e.g.
  * before taking the app somewhere without the dev server reachable, since

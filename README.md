@@ -154,6 +154,13 @@ way, independent of whichever mode is currently running.
   same image for reuse — and sends it to Claude with a Zod schema —
   `server/pageTranscriptionSchema.ts` — asking for every paragraph's text
   and outgoing choices, structured the same way the rules importer does).
+  A paragraph often runs past the bottom of the page it starts on, so each
+  request also sends the *next* page's image as context-only (not
+  transcribed itself, just there so Claude can read a paragraph's full
+  text and choices even when they cross the page boundary) — omitted at
+  the last page, where there's nothing to look ahead to. A page
+  transcribed before this was added can still end up with a paragraph cut
+  off mid-sentence; **Retranscribe this page** (see below) fixes it.
   `server/httpUtils.ts` holds the request-body and path-safety helpers
   both server plugins share, plus `rejectCrossOrigin`, called first by
   every endpoint: since `server.host: true` makes these reachable from

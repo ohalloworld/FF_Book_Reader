@@ -12,12 +12,16 @@ const BOOKS_DIR = path.join(process.cwd(), ".local-books");
 // Override for cost/quality experiments — the default stays claude-opus-5.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
 
-const TRANSCRIBE_SYSTEM_PROMPT = `You transcribe numbered paragraphs from one page image of a Fighting-Fantasy-style gamebook. Each paragraph starts with a printed number. For every complete paragraph visible on the page:
-- transcribe its full text verbatim — do not summarize, paraphrase, or correct it
-- list every numbered choice it offers ("turn to X", "if you have the key, turn to Y"), with the exact target number
+const TRANSCRIBE_SYSTEM_PROMPT = `You transcribe numbered paragraphs from a page of a Fighting-Fantasy-style gamebook. Each paragraph starts with a printed number.
+
+You are shown two page images: the TARGET page, and the page that follows it (shown only for context, so a paragraph that runs past the bottom of the target page can still be read in full). Only transcribe paragraphs whose number is printed on the TARGET page — never a paragraph whose number first appears on the following page, even though you can see its text too; that page gets transcribed in its own turn. If the second image isn't provided, only the target page has content (it's the last page).
+
+For every paragraph that starts on the target page:
+- transcribe its full text verbatim, including any part that continues onto the following page — do not summarize, paraphrase, correct, or truncate it
+- list every numbered choice it offers ("turn to X", "if you have the key, turn to Y"), with the exact target number, even if those choices are only printed on the following page
 - leave choices empty if the paragraph has none (e.g. it leads into combat, or is an ending)
 
-Skip a paragraph that is visibly cut off at the very top or bottom of the page with no readable number of its own — it will be caught when the adjacent page is transcribed. Do not invent numbers or content not visible on the page.`;
+If a paragraph's number is printed right at the very bottom edge of the target page and is genuinely unreadable (not just continuing text with no number — an actual illegible or cut-off digit), skip it rather than guessing. Do not invent numbers or content not visible on the page.`;
 
 function bookPdfPath(bookId: string): string {
   return path.join(BOOKS_DIR, `${bookId}.pdf`);
@@ -89,36 +93,48 @@ export function bookTranscriptionPlugin(): Plugin {
 
             let parser: PDFParse | null = null;
             let dataUrl: string;
+            let nextDataUrl: string | undefined;
             try {
               const data = await fs.readFile(bookPdfPath(bookId)).catch(() => {
                 throw Object.assign(new Error("No PDF is attached to this book yet."), { statusCode: 404 });
               });
               parser = new PDFParse({ data: new Uint8Array(data) });
-              const result = await parser.getScreenshot({ partial: [page], scale: 2 });
-              if (result.pages.length === 0) {
+              // Also render the following page, shown to Claude as context
+              // only — a paragraph starting on `page` but continuing past
+              // its bottom edge can then still be transcribed in full,
+              // rather than cut off (see TRANSCRIBE_SYSTEM_PROMPT). Simply
+              // omitted from the results if `page + 1` is past the end.
+              const result = await parser.getScreenshot({ partial: [page, page + 1], scale: 2 });
+              const target = result.pages.find((p) => p.pageNumber === page);
+              if (!target) {
                 sendJson(res, 400, { error: `Page ${page} is out of range for this PDF.` });
                 return;
               }
-              dataUrl = result.pages[0].dataUrl;
+              dataUrl = target.dataUrl;
+              nextDataUrl = result.pages.find((p) => p.pageNumber === page + 1)?.dataUrl;
             } finally {
               await parser?.destroy();
             }
 
             const { mediaType, data: base64 } = splitDataUrl(dataUrl);
+            const content: Anthropic.ContentBlockParam[] = [
+              { type: "text", text: `Page ${page} — the TARGET page. Transcribe every paragraph whose number appears here.` },
+              { type: "image", source: { type: "base64", media_type: mediaType as "image/png", data: base64 } },
+            ];
+            if (nextDataUrl) {
+              const next = splitDataUrl(nextDataUrl);
+              content.push(
+                { type: "text", text: `Page ${page + 1} — for context only, to complete a paragraph that runs past the target page.` },
+                { type: "image", source: { type: "base64", media_type: next.mediaType as "image/png", data: next.data } },
+              );
+            }
+
             const client = new Anthropic();
             const response = await client.messages.parse({
               model: MODEL,
               max_tokens: 8000,
               system: [{ type: "text", text: TRANSCRIBE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    { type: "image", source: { type: "base64", media_type: mediaType as "image/png", data: base64 } },
-                    { type: "text", text: `This is page ${page} of the book. Transcribe its numbered paragraphs.` },
-                  ],
-                },
-              ],
+              messages: [{ role: "user", content }],
               output_config: { format: zodOutputFormat(PageTranscriptionSchema) },
             });
 
