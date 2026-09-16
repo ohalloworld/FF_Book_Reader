@@ -37,5 +37,20 @@ export default defineConfig({
     // Bind to the LAN, not just localhost, so a phone on the same WiFi can
     // open this dev server too (Vite prints the Network URL to use).
     host: true,
+    port: 5173,
+  },
+  preview: {
+    // Same host+port as `server` above, on purpose: `npm run preview`
+    // (a production build) is what actually gives reliable offline PWA
+    // caching — `npm run dev`'s service worker can't precache its
+    // on-the-fly unbundled modules the way a real build's fingerprinted
+    // bundle lets it. Keeping the same origin means switching between
+    // `npm run dev` (to add new content — its local /api/* endpoints only
+    // exist there) and `npm run preview` (to read what's already cached,
+    // reliably, even offline) doesn't lose anything: localStorage and
+    // IndexedDB are scoped per-origin, and a different port would count
+    // as a different origin with its own empty storage.
+    host: true,
+    port: 5173,
   },
 })

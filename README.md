@@ -48,8 +48,8 @@ when you use the "Import Book Rules" screen.
 
 It's a PWA (installable web app), so you can put it on your phone's home
 screen and use it full-screen like a native app — as long as your phone is
-on the **same WiFi** as the computer running `npm run dev` (nothing is
-hosted anywhere else, so it only reaches devices on your local network):
+on the **same WiFi** as the computer serving it (nothing is hosted
+anywhere else, so it only reaches devices on your local network):
 
 1. Run `npm run dev` on your computer. It prints a `Network:` URL, e.g.
    `http://192.168.1.23:5173/` — that's your computer's LAN address.
@@ -58,12 +58,37 @@ hosted anywhere else, so it only reaches devices on your local network):
    - **iOS (Safari):** Share button → "Add to Home Screen"
    - **Android (Chrome):** ⋮ menu → "Add to Home screen" / "Install app"
 
-It'll launch full-screen with its own icon, and the service worker caches
-the app shell so it still loads even if your connection drops mid-read.
-Save/resume is stored in your phone's own browser storage, independent of
-the server. Your computer only needs to stay on and running `npm run dev`
-for: the very first load (before the service worker has cached anything),
-and the "Import Book Rules" screen (which calls Claude via your computer).
+**Two different run modes, same address, different guarantees.**
+`npm run dev` and `npm run preview` (below) both serve on the same
+`host:5173`, on purpose — same origin means the same `localStorage`/
+IndexedDB, so nothing you've read or transcribed is lost switching
+between them. But they're not interchangeable:
+
+- **`npm run dev`** is what you use day to day, and the only mode with the
+  local API: importing a book's rules and transcribing new pages both
+  need it running. Its offline caching is **not reliable** — dev mode
+  serves many small on-the-fly module files with no fixed bundle to
+  precache, so if the dev server goes down (computer off, `Ctrl-C`,
+  out of WiFi range) before you've switched to a real build, the app can
+  fail to load at all, even for content you'd already read. (If this
+  just happened to you — server off, page won't load — that's why; see
+  "Reading without the server" below for the fix.)
+- **`npm run build` then `npm run preview`** serves an actual production
+  bundle, which the service worker *can* reliably precache — this is
+  the mode that keeps the promise of "still loads with your computer off
+  or out of range." It has no local API at all (`/api/*` doesn't exist
+  under `preview` — those endpoints are dev-server-only middleware), so
+  reading whatever's already transcribed works perfectly, but importing
+  rules or transcribing a new page doesn't; the app already handles this
+  gracefully (any blank/untranscribed section just shows its normal
+  companion-mode fallback instead of erroring).
+
+Practically: use `npm run dev` while you're actively adding content
+(transcribing pages, importing a ruleset), then switch to
+`npm run build && npm run preview` before relying on the app somewhere
+without your computer reachable. Save/resume, transcribed text and
+images, and rule sets are all in your phone's own browser storage either
+way, independent of whichever mode is currently running.
 
 ## Architecture
 
@@ -197,9 +222,11 @@ and the "Import Book Rules" screen (which calls Claude via your computer).
   under `prefers-reduced-motion`.
 - `src/components/` (the rest) — the reader UI: character sheet, section
   view, choice list, combat panel, title/character-creation screen.
-- `vite.config.ts` — `server.host: true` (LAN access for phones) and
-  `vite-plugin-pwa` (installable manifest + offline app-shell caching,
-  icons in `public/`).
+- `vite.config.ts` — `server.host: true` (LAN access for phones),
+  `preview.host: true` pinned to the same `port: 5173` as `server` (so
+  `npm run dev` and `npm run preview` share one origin — see "Using it on
+  your phone"), and `vite-plugin-pwa` (installable manifest + offline
+  app-shell caching, icons in `public/`).
 
 ## Importing a book's rules
 
@@ -267,20 +294,26 @@ everything: its local PDF, its cached text, and its cached images.
 
 ### Reading without the server
 
-Transcribing a *new* page always needs the dev server (and your computer)
-reachable — that's the one Claude call in the whole app. A page you've
-*already* transcribed doesn't: its text and image live in your phone's own
-`localStorage`/IndexedDB, and the PWA's service worker caches the app
-itself, so anything already read keeps working with your computer off or
-out of WiFi range. Only new pages need the server.
+Transcribing a *new* page always needs the local API reachable — that's
+the one Claude call in the whole app, and it only exists under `npm run
+dev` (see "Using it on your phone" above). A page you've *already*
+transcribed doesn't need any server: its text and image live in your
+phone's own `localStorage`/IndexedDB. Whether the *app itself* also
+survives your computer going offline depends on which mode served it —
+reliably only under a production build (`npm run build` then
+`npm run preview`), not `npm run dev`.
 
-So before taking a book somewhere without the server (a trip, a
-dead-zone), open its row in the **Library** and use **Pre-transcribe
-entire book** (shown once a PDF's attached) — it works through every page
-up front, shows a running cost estimate first and live progress as it
-goes, can be cancelled and resumed, and retries individually if a page
-fails. Every page is still only ever sent to Claude once: running it again
-later just tops up whatever's new.
+So before taking a book somewhere without your computer reachable (a
+trip, a dead-zone): first, in the **Library**, open a book's row and use
+**Pre-transcribe entire book** (shown once a PDF's attached) — it works
+through every page up front, shows a running cost estimate first and
+live progress as it goes, can be cancelled and resumed, and retries
+individually if a page fails. Every page is still only ever sent to
+Claude once: running it again later just tops up whatever's new. Then,
+switch your computer over to `npm run build && npm run preview` (same
+address, so your phone doesn't need to re-add anything) before you go —
+that's what makes the app shell itself, not just the book's text, keep
+loading with no server reachable at all.
 
 For the built-in demo (and any Library book you write by hand instead of
 transcribing), everything's already baked into the app bundle the service
@@ -311,8 +344,9 @@ and reference directly, the same way `testBook.ts` is.
 ## Development
 
 ```bash
-npm run dev      # start the dev server (frontend + local rules API)
+npm run dev      # dev server: frontend + local rules/transcription API, unreliable offline caching
 npm run build    # typecheck + production build
+npm run preview  # serve that build — same host:5173, reliable offline caching, no local API
 npm run lint     # oxlint
 npm run test:e2e # Playwright end-to-end suite (see tests/)
 ```
