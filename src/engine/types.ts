@@ -86,10 +86,21 @@ export interface Monster {
   stats: Record<string, number>;
 }
 
+/** How a multi-monster encounter fights back — the actual Fighting
+ * Fantasy rule varies by book (and often by encounter within a book), so
+ * this is picked per-fight rather than assumed. "sequential" — the FF
+ * standard — engages one monster at a time, in order; the rest wait their
+ * turn and pose no threat until then. "simultaneous" has every living
+ * monster attack every round regardless of which one is being targeted,
+ * for the books that call for that instead. */
+export type MultiMonsterMode = "sequential" | "simultaneous";
+
 export interface Encounter {
   monsters: Monster[];
   onDefeatGoTo?: SectionId;
   fleeGoTo?: SectionId;
+  /** Defaults to "sequential" (the FF standard) when omitted. */
+  multiMonsterMode?: MultiMonsterMode;
 }
 
 export type Condition =

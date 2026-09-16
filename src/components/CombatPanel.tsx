@@ -35,9 +35,21 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onU
   const attackStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.attackStat);
   const attackLabel = attackStat?.label ?? ruleSet.combat.attackStat;
 
+  // In sequential mode (the FF standard) only the current — first living —
+  // monster can be fought; the rest wait their turn and pose no threat
+  // until then. In simultaneous mode every living monster can be targeted.
+  const frontMonster = combat.monsters.find((m) => m.currentDamageStat > 0);
+
   return (
     <div className="combat-panel">
       <h3>Combat</h3>
+      {combat.monsters.length > 1 && (
+        <p className="muted combat-mode-note">
+          {combat.mode === "sequential"
+            ? "Fighting one at a time, in order — the rest wait their turn."
+            : "All still-living monsters attack each round."}
+        </p>
+      )}
 
       <div className="combat-modifiers">
         <ModifierStepper label="Your rolls" value={combat.modifiers.player} onAdjust={(d) => onAdjustModifier("player", d)} />
@@ -48,6 +60,7 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onU
         const defeated = monster.currentDamageStat <= 0;
         const maxDamageStat = monster.stats[ruleSet.combat.damageStat] || 1;
         const pct = Math.max(0, Math.round((monster.currentDamageStat / maxDamageStat) * 100));
+        const canFight = combat.mode === "simultaneous" || monster.id === frontMonster?.id;
         return (
           <div key={monster.id} className={"monster-row" + (defeated ? " defeated" : "")}>
             <div className="stat-label">
@@ -61,11 +74,12 @@ export function CombatPanel({ combat, ruleSet, onFight, onFlee, onEndCombat, onU
             <div className="stat-bar">
               <div className="stat-bar-fill" style={{ width: `${pct}%` }} />
             </div>
-            {!defeated && (
+            {!defeated && canFight && (
               <button type="button" className="choice-button" onClick={() => onFight(monster.id)}>
                 Attack {monster.name}
               </button>
             )}
+            {!defeated && !canFight && <p className="muted combat-waiting">Waiting…</p>}
           </div>
         );
       })}

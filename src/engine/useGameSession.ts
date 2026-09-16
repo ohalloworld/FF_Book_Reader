@@ -10,7 +10,7 @@ import {
 } from "./combat";
 import { applyEffect, applyEffects, availableChoices, cloneCharacter, isAlive } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
-import type { Character, Choice, Gamebook, Monster, Section, SectionId } from "./types";
+import type { Character, Choice, Gamebook, Monster, MultiMonsterMode, Section, SectionId } from "./types";
 
 export interface CombatMonsterState extends Monster {
   currentDamageStat: number;
@@ -32,6 +32,10 @@ export interface CombatState {
   /** Flat Attack Strength adjustments for this fight — set from the Combat
    * panel for a book's own encounter modifiers, applied every round. */
   modifiers: CombatModifiers;
+  /** "sequential" (the FF standard) — only the current monster fights
+   * back, in order; "simultaneous" — every living monster attacks every
+   * round. Picked per-fight since the real rule varies by book. */
+  mode: MultiMonsterMode;
   /** True for a combat started manually (Companion Tools) rather than
    * from an authored Section.encounter — changes how "Flee" behaves. */
   manual?: boolean;
@@ -68,6 +72,7 @@ function startCombat(section: Section, damageStat: string): CombatState | undefi
     fleeGoTo: section.encounter.fleeGoTo,
     onDefeatGoTo: section.encounter.onDefeatGoTo,
     modifiers: noCombatModifiers,
+    mode: section.encounter.multiMonsterMode ?? "sequential",
   };
 }
 
@@ -201,17 +206,23 @@ export function useGameSession(book: Gamebook) {
 
       const result = resolveCombatRound(character, monster, ruleSet.combat, combat.modifiers);
 
-      // Every OTHER living monster in the encounter still swings at the
-      // player this round, not just the one being fought — each rolls its
-      // own Attack Strength against the player's roll from this round.
+      // "simultaneous" mode: every OTHER living monster in the encounter
+      // still swings at the player this round, not just the one being
+      // fought — each rolls its own Attack Strength against the player's
+      // roll from this round. "sequential" (the FF standard) skips this —
+      // only the monster actually being fought poses any threat; the rest
+      // wait their turn (see CombatPanel, which only shows an Attack
+      // button for the current one in that mode).
       let totalDamageTaken = result.damageTaken;
       const additionalAttackers: string[] = [];
-      for (const other of combat.monsters) {
-        if (other.id === monsterId || other.currentDamageStat <= 0) continue;
-        const otherAttackStrength = rollMonsterAttackStrength(other, ruleSet.combat, combat.modifiers.monster);
-        if (otherAttackStrength > result.playerAttackStrength) {
-          totalDamageTaken += ruleSet.combat.damagePerHit;
-          additionalAttackers.push(other.name);
+      if (combat.mode === "simultaneous") {
+        for (const other of combat.monsters) {
+          if (other.id === monsterId || other.currentDamageStat <= 0) continue;
+          const otherAttackStrength = rollMonsterAttackStrength(other, ruleSet.combat, combat.modifiers.monster);
+          if (otherAttackStrength > result.playerAttackStrength) {
+            totalDamageTaken += ruleSet.combat.damagePerHit;
+            additionalAttackers.push(other.name);
+          }
         }
       }
 
@@ -274,7 +285,7 @@ export function useGameSession(book: Gamebook) {
    * so fleeing just ends the fight (endCombat) and a defeat just leaves
    * STAMINA at 0 for the reader to act on themselves. */
   const startManualCombat = useCallback(
-    (monsters: { name: string; stats: Record<string, number> }[]) => {
+    (monsters: { name: string; stats: Record<string, number> }[], mode: MultiMonsterMode = "sequential") => {
       if (monsters.length === 0) return;
       setCombat({
         monsters: monsters.map((monster, i) => ({
@@ -284,6 +295,7 @@ export function useGameSession(book: Gamebook) {
           currentDamageStat: monster.stats[ruleSet.combat.damageStat] ?? 0,
         })),
         modifiers: noCombatModifiers,
+        mode,
         manual: true,
       });
       setLastLuckOutcome(null);

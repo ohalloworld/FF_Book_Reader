@@ -1246,6 +1246,28 @@ p {
   padding: 2px 0;
 }
 
+.multi-monster-mode {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.multi-monster-mode legend {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.75;
+  padding: 0 4px;
+}
+
+.multi-monster-mode label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
 .companion-combat-form {
   display: flex;
   flex-wrap: wrap;
@@ -1311,6 +1333,16 @@ p {
   margin-top: 20px;
   border-top: 1px solid var(--border);
   padding-top: 16px;
+}
+
+.combat-mode-note {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.combat-waiting {
+  margin-top: 8px;
+  font-size: 14px;
 }
 
 .combat-modifiers {

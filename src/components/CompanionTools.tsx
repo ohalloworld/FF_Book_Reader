@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { rollDice, type DiceRoll } from "../engine/dice";
-import type { RuleSet } from "../engine/types";
+import type { MultiMonsterMode, RuleSet } from "../engine/types";
 
 function DiceRoller() {
   const [count, setCount] = useState("2");
@@ -69,7 +69,7 @@ export interface ManualMonster {
 interface CompanionToolsProps {
   ruleSet: RuleSet;
   onRollTest: (testKey: string) => void;
-  onStartCombat: (monsters: ManualMonster[]) => void;
+  onStartCombat: (monsters: ManualMonster[], mode: MultiMonsterMode) => void;
   combatActive: boolean;
 }
 
@@ -78,6 +78,7 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
   const [attackValue, setAttackValue] = useState("");
   const [damageValue, setDamageValue] = useState("");
   const [pending, setPending] = useState<ManualMonster[]>([]);
+  const [mode, setMode] = useState<MultiMonsterMode>("sequential");
 
   const attackStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.attackStat);
   const damageStat = ruleSet.stats.find((s) => s.key === ruleSet.combat.damageStat);
@@ -110,12 +111,15 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
     const monster = currentAsMonster();
     const monsters = monster ? [...pending, monster] : pending;
     if (monsters.length === 0) return;
-    onStartCombat(monsters);
+    onStartCombat(monsters, mode);
     setPending([]);
     setMonsterName("");
     setAttackValue("");
     setDamageValue("");
+    setMode("sequential");
   };
+
+  const totalMonsters = pending.length + (currentFilled ? 1 : 0);
 
   return (
     <div className="companion-tools">
@@ -156,6 +160,29 @@ export function CompanionTools({ ruleSet, onRollTest, onStartCombat, combatActiv
                 </li>
               ))}
             </ul>
+          )}
+          {totalMonsters > 1 && (
+            <fieldset className="multi-monster-mode">
+              <legend>How do they fight? (check this book's own rules — it varies by book)</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="multi-monster-mode"
+                  checked={mode === "sequential"}
+                  onChange={() => setMode("sequential")}
+                />
+                One at a time, in order (most books' default)
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="multi-monster-mode"
+                  checked={mode === "simultaneous"}
+                  onChange={() => setMode("simultaneous")}
+                />
+                All of them attack every round
+              </label>
+            </fieldset>
           )}
           <form className="companion-combat-form" onSubmit={handleStart}>
             <input

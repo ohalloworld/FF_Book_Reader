@@ -27,11 +27,13 @@ displayed text — it unwinds a dice test or mid-fight damage too), and
 add/remove inventory, and start an ad-hoc fight — against one monster or
 several, since a real fight the book describes often is more than one —
 using the same dice/combat math as an authored encounter, just triggered
-by hand. Every living monster in a fight attacks back each round, not
-just whichever one you're currently targeting, and the Combat panel has
-its own **+/− modifiers** for a book's own encounter modifiers ("the
-guard gets +2 for reinforcements") applied to every round until changed.
-Both modes work together: a paragraph either has real
+by hand. Facing several monsters at once, you pick **how they fight back**
+to match this fight's own instructions: fight them one at a time in order
+(most FF books' standard — the rest wait their turn) or have all of them
+attack every round (an explicit alternative some books use instead). The
+Combat panel also has its own **+/− modifiers** for a book's own encounter
+modifiers ("the guard gets +2 for reinforcements") applied to every round
+until changed. Both modes work together: a paragraph either has real
 transcribed text, or it's a blank companion placeholder, and you can mix
 the two freely as you go (or hand-type/correct a paragraph yourself via
 **Edit**, no PDF required).
@@ -195,18 +197,25 @@ way, independent of whichever mode is currently running.
   sides/modifier, e.g. for a "roll one die" instruction that isn't a named
   test), manual test rolls, and the ad-hoc combat form, shown during play.
   The combat form builds up a list of monsters ("Add another monster")
-  before starting, not just one at a time — `useGameSession.ts`'s
-  `fightRound` resolves the player's attack against whichever monster is
-  targeted, but every *other* living monster also rolls its own Attack
-  Strength against the player that round (`combat.ts`'s
-  `rollMonsterAttackStrength`), so a multi-monster fight can't be
-  cherry-picked by only ever attacking the weakest one — they all still
-  swing back. `CombatPanel.tsx`'s **modifiers** (`CombatState.modifiers`,
-  adjusted via `adjustCombatModifier`) add a flat, book-defined amount to
-  either side's Attack Strength every round until changed, for an
-  encounter's own combat modifiers. `CharacterSheet.tsx` takes an optional
-  `actions` prop for the inline stat/inventory edit controls (omitted in
-  the rules-sandbox, where the sheet stays read-only).
+  before starting, not just one at a time. Fighting Fantasy's own rule for
+  facing several monsters at once genuinely varies by book (and often by
+  encounter within a book — check the specific page), so **how they fight
+  back is picked per-fight, not assumed**: "sequential" (`MultiMonsterMode`
+  in `types.ts`, and the default) is the standard approach used by most FF
+  gamebooks — engage one monster at a time, in order; the rest wait and
+  pose no threat until their turn (`CombatPanel.tsx` only shows an Attack
+  button for the current one). "Simultaneous" is an explicit opt-in for
+  books that call for it instead — every living monster rolls its own
+  Attack Strength against the player each round regardless of who's being
+  targeted (`combat.ts`'s `rollMonsterAttackStrength`,
+  `useGameSession.ts`'s `fightRound`). An authored `Section.encounter` can
+  set `multiMonsterMode` directly for a specific page. `CombatPanel.tsx`'s
+  **modifiers** (`CombatState.modifiers`, adjusted via
+  `adjustCombatModifier`) add a flat, book-defined amount to either side's
+  Attack Strength every round until changed, for an encounter's own
+  combat modifiers. `CharacterSheet.tsx` takes an optional `actions` prop
+  for the inline stat/inventory edit controls (omitted in the
+  rules-sandbox, where the sheet stays read-only).
 - **Reading-first layout:** the full `CharacterSheet` isn't part of the
   normal play view anymore — `StatBar.tsx` shows a slim sticky strip of
   just the pool stats (SKILL/STAMINA/LUCK-equivalents) above the story,
