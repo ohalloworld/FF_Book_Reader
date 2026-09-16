@@ -615,8 +615,8 @@ p {
 
 /* Game shell — reading-first: the story panel is the only thing in the
  * normal flow, a slim sticky stat strip sits above it, and the full sheet
- * lives in an on-demand drawer (see .stat-bar-strip / .character-drawer-*
- * below and CharacterDrawer.tsx). */
+ * (and the rules reference) live in on-demand drawers (see .stat-bar-strip
+ * / .drawer-* below and Drawer.tsx). */
 .game-shell {
   display: flex;
   flex-direction: column;
@@ -669,6 +669,12 @@ p {
   color: var(--bar-fill-low);
 }
 
+.stat-bar-strip-toggles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .stat-bar-strip-toggle {
   font: inherit;
   font-size: 14px;
@@ -682,7 +688,12 @@ p {
   white-space: nowrap;
 }
 
-.character-drawer-backdrop {
+.stat-bar-strip-toggle.secondary {
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+.drawer-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -692,7 +703,7 @@ p {
   animation: drawer-fade-in 0.15s ease;
 }
 
-.character-drawer-panel {
+.drawer-panel {
   position: relative;
   width: min(380px, 100%);
   max-width: 100%;
@@ -705,7 +716,7 @@ p {
   animation: drawer-slide-in-right 0.2s ease;
 }
 
-.character-drawer-close {
+.drawer-close {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -722,11 +733,11 @@ p {
 }
 
 @media (max-width: 640px) {
-  .character-drawer-backdrop {
+  .drawer-backdrop {
     align-items: flex-end;
   }
 
-  .character-drawer-panel {
+  .drawer-panel {
     width: 100%;
     height: auto;
     max-height: 85svh;

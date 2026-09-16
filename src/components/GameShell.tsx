@@ -13,6 +13,7 @@ import { CombatPanel } from "./CombatPanel";
 import { CompanionTools } from "./CompanionTools";
 import { ParagraphNav } from "./ParagraphNav";
 import { PdfPageBrowser, TranscribeSectionPrompt } from "./PdfPageTools";
+import { RulesDrawer } from "./RulesDrawer";
 import { SectionView } from "./SectionView";
 import { StatBar } from "./StatBar";
 import { TitleScreen } from "./TitleScreen";
@@ -21,6 +22,7 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
   const [book, setBook] = useState(initialBook);
   const [pdfStatus, setPdfStatus] = useState<PdfStatus | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [rolledCharacter, setRolledCharacter] = useState<Character | null>(null);
 
   useEffect(() => {
@@ -111,7 +113,12 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
 
   return (
     <div className="game-shell">
-      <StatBar character={character} ruleSet={session.ruleSet} onOpenSheet={() => setSheetOpen(true)} />
+      <StatBar
+        character={character}
+        ruleSet={session.ruleSet}
+        onOpenSheet={() => setSheetOpen(true)}
+        onOpenRules={() => setRulesOpen(true)}
+      />
       <main className="game-main">
         {onExit && (
           <button type="button" className="link-button back-to-library" onClick={onExit}>
@@ -177,6 +184,7 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
         ruleSet={session.ruleSet}
         actions={characterActions}
       />
+      <RulesDrawer open={rulesOpen} onClose={() => setRulesOpen(false)} ruleSet={session.ruleSet} />
     </div>
   );
 }

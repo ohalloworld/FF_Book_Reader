@@ -194,11 +194,16 @@ way, independent of whichever mode is currently running.
   sheet stays read-only).
 - **Reading-first layout:** the full `CharacterSheet` isn't part of the
   normal play view anymore — `StatBar.tsx` shows a slim sticky strip of
-  just the pool stats (SKILL/STAMINA/LUCK-equivalents) above the story, and
-  tapping it opens the full sheet (inventory, counters, edit actions) in
-  `CharacterDrawer.tsx`, a slide-in panel (from the right on desktop, up
-  from the bottom on mobile) that closes on Escape or a backdrop click. The
-  story paragraph stays the visual focus instead of competing with an
+  just the pool stats (SKILL/STAMINA/LUCK-equivalents) above the story,
+  with two buttons: tapping the character name opens the full sheet
+  (inventory, counters, edit actions) in `CharacterDrawer.tsx`, and
+  **Rules** opens `RulesDrawer.tsx` — the same stat-generation/tests/
+  combat/special-rules reference shown when importing or previewing a
+  rule set, so a mid-read "how does combat work again?" doesn't mean
+  leaving the story to go dig through Import Book Rules. Both are
+  `Drawer.tsx`, a shared slide-in panel (from the right on desktop, up
+  from the bottom on mobile) that closes on Escape or a backdrop click.
+  The story paragraph stays the visual focus instead of competing with an
   always-on sidebar.
 - **Rolling a character is a visible step**, matching the books' own
   ritual of rolling your Adventure Sheet before the story starts:

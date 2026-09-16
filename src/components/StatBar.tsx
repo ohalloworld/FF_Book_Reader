@@ -9,10 +9,12 @@ export function StatBar({
   character,
   ruleSet,
   onOpenSheet,
+  onOpenRules,
 }: {
   character: Character;
   ruleSet: RuleSet;
   onOpenSheet: () => void;
+  onOpenRules: () => void;
 }) {
   const pools = ruleSet.stats.filter((s) => s.kind === "pool");
 
@@ -34,9 +36,14 @@ export function StatBar({
           );
         })}
       </div>
-      <button type="button" className="stat-bar-strip-toggle" onClick={onOpenSheet}>
-        {character.name} ▸
-      </button>
+      <span className="stat-bar-strip-toggles">
+        <button type="button" className="stat-bar-strip-toggle secondary" onClick={onOpenRules}>
+          Rules
+        </button>
+        <button type="button" className="stat-bar-strip-toggle" onClick={onOpenSheet}>
+          {character.name} ▸
+        </button>
+      </span>
     </div>
   );
 }
