@@ -26,7 +26,6 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
   const [author, setAuthor] = useState("");
   const [startSection, setStartSection] = useState("1");
   const [ruleSetId, setRuleSetId] = useState(ruleSets[0]?.id ?? "");
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -40,7 +39,7 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
     };
   }, [books]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!title.trim()) return;
@@ -56,21 +55,16 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
       startSection: startSection.trim() || "1",
     };
     saveLibraryBook(entry);
-    if (pdfFile) {
-      setAttaching(entry.id);
-      try {
-        await attachBookPdf(entry.id, pdfFile);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to attach PDF.");
-      } finally {
-        setAttaching(null);
-      }
-    }
     setBooks(listLibraryBooks());
     setTitle("");
     setAuthor("");
     setStartSection("1");
-    setPdfFile(null);
+    // Jump straight to this book's Manage panel so attaching its PDF (a
+    // slower, bigger upload) happens as its own step, once the book itself
+    // is already safely saved — picking a large PDF file can background or
+    // reload the tab on some mobile browsers, and we don't want that to be
+    // able to wipe out an unsaved title/author/rule-set selection too.
+    setExpandedId(entry.id);
   };
 
   const handleDelete = async (id: string) => {
@@ -218,19 +212,12 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
             ))}
           </select>
         </label>
-        <label>
-          PDF (optional — can also attach later)
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
         <div className="importer-actions">
-          <button type="submit" className="choice-button" disabled={!title.trim() || !ruleSetId || attaching !== null}>
-            {attaching ? "Adding…" : "Add Book"}
+          <button type="submit" className="choice-button" disabled={!title.trim() || !ruleSetId}>
+            Add Book
           </button>
         </div>
+        <p className="muted small">You'll attach its PDF on the next step, once the book is saved.</p>
         {ruleSets.length === 1 && (
           <p className="muted">
             Only the standard rules are available so far — import a book's own rules from the "Import Book Rules"

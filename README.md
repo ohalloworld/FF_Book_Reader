@@ -301,11 +301,15 @@ committing it — even for personal use, that's real copyrighted text.
 ## Playing a real book
 
 Open the **Library** tab and use **Add a Book**: give it a title, optional
-author, which paragraph it starts at (usually `1`), which rule set to use
-(the standard rules, or one you've imported), and — optionally, right
-there or later from the book's row — its PDF. Click **Play** and it
-behaves exactly like the demo book's engine: character creation, save/
-resume, combat and Luck-test math.
+author, which paragraph it starts at (usually `1`), and which rule set to
+use (the standard rules, or one you've imported). Clicking **Add Book**
+saves it right away and opens its **Manage** panel so you can attach its
+PDF as a separate step — picking a PDF is decoupled from creating the book
+entry on purpose, since selecting a large file can background or reload
+the tab on some mobile browsers, and that shouldn't be able to wipe out a
+title/author/rule-set you hadn't saved yet. Click **Play** and it behaves
+exactly like the demo book's engine: character creation, save/resume,
+combat and Luck-test math.
 
 **With a PDF attached:** landing on a section with no text yet shows a
 prompt asking which PDF page it's on. Fighting Fantasy paragraph numbers
@@ -389,8 +393,9 @@ npm run test:e2e # Playwright end-to-end suite (see tests/)
 
 `tests/` covers combat resolution (including multi-monster fights and
 Attack Strength modifiers), save/resume (and the new-game overwrite
-confirmation), transcription caching, character rolling, and the backup
-export/import round trip — real browser interactions against a real (but
+confirmation), transcription caching, character rolling, adding a book
+(saved immediately, PDF attachment handed off as its own step), and the
+backup export/import round trip — real browser interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
 endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it
