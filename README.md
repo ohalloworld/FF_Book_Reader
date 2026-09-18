@@ -222,7 +222,15 @@ way, independent of whichever mode is currently running.
   Attack Strength every round until changed, for an encounter's own
   combat modifiers. `CharacterSheet.tsx` takes an optional `actions` prop
   for the inline stat/inventory edit controls (omitted in the
-  rules-sandbox, where the sheet stays read-only).
+  rules-sandbox, where the sheet stays read-only). Each pool stat has two
+  steppers: the normal one adjusts `current` but can never push it past
+  `initial` (a pool's rolled max — matching how FF potions/effects
+  restore you *up to* your starting SKILL/STAMINA/LUCK, never past it);
+  a separate **Max** stepper (`adjustPoolMax`) raises or lowers `initial`
+  itself, carrying `current` with it, for permanently increasing a stat
+  (some books grant this directly, e.g. "your SKILL is now one point
+  higher") or for a house rule of just wanting a higher cap to start
+  with.
 - **Reading-first layout:** the full `CharacterSheet` isn't part of the
   normal play view anymore — `StatBar.tsx` shows a slim sticky strip of
   just the pool stats (SKILL/STAMINA/LUCK-equivalents) above the story,
@@ -393,9 +401,10 @@ npm run test:e2e # Playwright end-to-end suite (see tests/)
 
 `tests/` covers combat resolution (including multi-monster fights and
 Attack Strength modifiers), save/resume (and the new-game overwrite
-confirmation), transcription caching, character rolling, adding a book
-(saved immediately, PDF attachment handed off as its own step), and the
-backup export/import round trip — real browser interactions against a real (but
+confirmation), transcription caching, character rolling, raising a pool
+stat's max, adding a book (saved immediately, PDF attachment handed off
+as its own step), and the backup export/import round trip — real browser
+interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
 endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it

@@ -3,6 +3,7 @@ import type { Character, RuleSet } from "../engine/types";
 
 export interface CharacterSheetActions {
   adjustPool: (statKey: string, delta: number) => void;
+  adjustPoolMax: (statKey: string, delta: number) => void;
   adjustCounter: (statKey: string, delta: number) => void;
   addItem: (item: string) => void;
   removeItem: (item: string) => void;
@@ -35,10 +36,12 @@ function PoolStat({
   label,
   value,
   onAdjust,
+  onAdjustMax,
 }: {
   label: string;
   value: { current: number; initial: number };
   onAdjust?: (delta: number) => void;
+  onAdjustMax?: (delta: number) => void;
 }) {
   const pct = value.initial === 0 ? 0 : Math.round((value.current / value.initial) * 100);
   const low = pct <= 25;
@@ -57,6 +60,12 @@ function PoolStat({
         />
       </div>
       {onAdjust && <StatAdjuster onAdjust={onAdjust} />}
+      {onAdjustMax && (
+        <div className="stat-max-adjuster">
+          <span className="stat-max-adjuster-label">Max</span>
+          <StatAdjuster onAdjust={onAdjustMax} />
+        </div>
+      )}
     </div>
   );
 }
@@ -85,6 +94,7 @@ export function CharacterSheet({
             label={stat.label}
             value={value}
             onAdjust={actions ? (delta) => actions.adjustPool(stat.key, delta) : undefined}
+            onAdjustMax={actions ? (delta) => actions.adjustPoolMax(stat.key, delta) : undefined}
           />
         ) : null;
       })}

@@ -115,7 +115,12 @@ export type Effect =
   | { type: "removeItem"; item: string }
   | { type: "setFlag"; key: string; value: boolean | number }
   | { type: "adjustPool"; stat: string; delta: number }
-  | { type: "adjustCounter"; stat: string; delta: number };
+  | { type: "adjustCounter"; stat: string; delta: number }
+  /** Raises or lowers a pool's max (its `initial`, e.g. from a book effect
+   * like "permanently increase your SKILL by 1"), carrying `current` up or
+   * down with it — distinct from `adjustPool`, which only ever moves
+   * `current` and can never push it past the existing max. */
+  | { type: "adjustPoolMax"; stat: string; delta: number };
 
 export interface Choice {
   text: string;

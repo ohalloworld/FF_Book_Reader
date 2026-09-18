@@ -106,6 +106,7 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
 
   const characterActions = {
     adjustPool: session.adjustPool,
+    adjustPoolMax: session.adjustPoolMax,
     adjustCounter: session.adjustCounter,
     addItem: session.addItem,
     removeItem: session.removeItem,

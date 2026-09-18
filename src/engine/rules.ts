@@ -66,6 +66,14 @@ export function applyEffect(character: Character, effect: Effect): void {
       character.pools = { ...character.pools, [effect.stat]: { ...block, current: next } };
       break;
     }
+    case "adjustPoolMax": {
+      const block = character.pools[effect.stat];
+      if (!block) break;
+      const nextInitial = Math.max(1, block.initial + effect.delta);
+      const nextCurrent = Math.min(nextInitial, Math.max(0, block.current + effect.delta));
+      character.pools = { ...character.pools, [effect.stat]: { current: nextCurrent, initial: nextInitial } };
+      break;
+    }
     case "adjustCounter": {
       const current = character.counters[effect.stat] ?? 0;
       character.counters = { ...character.counters, [effect.stat]: Math.max(0, current + effect.delta) };

@@ -342,6 +342,17 @@ export function useGameSession(book: Gamebook) {
     [character, currentSectionId, persist],
   );
 
+  const adjustPoolMax = useCallback(
+    (statKey: string, delta: number) => {
+      if (!character) return;
+      const updated = cloneCharacter(character);
+      applyEffect(updated, { type: "adjustPoolMax", stat: statKey, delta });
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist],
+  );
+
   const adjustCounter = useCallback(
     (statKey: string, delta: number) => {
       if (!character) return;
@@ -464,6 +475,7 @@ export function useGameSession(book: Gamebook) {
     adjustCombatModifier,
     rollTest,
     adjustPool,
+    adjustPoolMax,
     adjustCounter,
     addItem,
     removeItem,

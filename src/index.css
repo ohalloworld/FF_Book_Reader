@@ -872,6 +872,24 @@ p {
   cursor: pointer;
 }
 
+.stat-max-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.stat-max-adjuster-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+
+.stat-max-adjuster .stat-adjuster {
+  margin-top: 0;
+}
+
 .stat {
   margin-bottom: 10px;
 }
