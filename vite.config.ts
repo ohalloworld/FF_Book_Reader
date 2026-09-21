@@ -12,7 +12,19 @@ export default defineConfig({
     rulesApiPlugin(),
     bookTranscriptionPlugin(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // NOT 'autoUpdate': that mode force-calls `window.location.reload()`
+      // the instant a new service worker activates, with no regard for
+      // anything in flight -- and in dev mode specifically, the generated
+      // service worker embeds a fresh random revision on every single
+      // `npm run dev` process start, so a plain server restart looks like
+      // a brand-new deploy to any tab still open from before. That reload
+      // firing mid-request (e.g. mid-way through the slow "Parse Rules"
+      // or "Attach PDF" calls) is what surfaces as a network error plus
+      // an unexplained page refresh. 'prompt' still installs updates in
+      // the background, but a new worker only ever activates if something
+      // calls the `updateSW()` function `virtual:pwa-register` returns --
+      // nothing in this app does, so it simply never force-reloads you.
+      registerType: 'prompt',
       // Enabled in dev too, so "Add to Home Screen" works straight from
       // `npm run dev` over the LAN — no separate production build needed.
       devOptions: { enabled: true },

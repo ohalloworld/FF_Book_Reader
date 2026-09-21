@@ -270,7 +270,17 @@ way, independent of whichever mode is currently running.
   `preview.host: true` pinned to the same `port: 5173` as `server` (so
   `npm run dev` and `npm run preview` share one origin — see "Using it on
   your phone"), and `vite-plugin-pwa` (installable manifest + offline
-  app-shell caching, icons in `public/`).
+  app-shell caching, icons in `public/`). `registerType: 'prompt'`, not
+  `'autoUpdate'`: `'autoUpdate'` force-calls `window.location.reload()`
+  the instant a new service worker activates, with no regard for anything
+  in flight — a real problem with `devOptions.enabled: true`, since the
+  dev-mode service worker embeds a fresh random revision on every single
+  `npm run dev` process start, so restarting the dev server under an
+  already-open tab looks exactly like a brand-new deploy and reloads it
+  out from under whatever you were doing. `'prompt'` still installs
+  updates in the background, but nothing in this app calls the
+  `updateSW()` function `virtual:pwa-register` returns, so a new worker
+  just sits ready and never force-takes-over.
 
 ## Importing a book's rules
 
