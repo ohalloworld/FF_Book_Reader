@@ -110,6 +110,7 @@ export function GameShell({ book: initialBook, onExit }: { book: Gamebook; onExi
     adjustCounter: session.adjustCounter,
     addItem: session.addItem,
     removeItem: session.removeItem,
+    useAbility: session.useAbility,
   };
 
   return (

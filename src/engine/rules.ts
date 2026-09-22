@@ -1,5 +1,5 @@
 import { rollFormula } from "./dice";
-import type { Character, Choice, Condition, Effect, RuleSet } from "./types";
+import type { AbilityDefinition, Character, Choice, Condition, Effect, RuleSet } from "./types";
 
 export function generateCharacter(ruleSet: RuleSet, name: string): Character {
   const character: Character = { name, pools: {}, counters: {}, inventory: [], flags: {} };
@@ -89,4 +89,21 @@ export function applyEffects(character: Character, effects: Effect[] | undefined
 
 export function isAlive(character: Character, ruleSet: RuleSet): boolean {
   return (character.pools[ruleSet.combat.damageStat]?.current ?? 1) > 0;
+}
+
+/** Deducts an ability's cost (a spell's Magic Points, a starship weapon's
+ * Fuel...) from whichever stat pays for it — a pool or a counter, however
+ * that stat's defined. A no-op for a free ability (no costStatKey) or one
+ * whose cost stat doesn't exist on this RuleSet. Mutates `character`
+ * in place, same convention as applyEffect — callers clone first. */
+export function spendAbilityCost(character: Character, ruleSet: RuleSet, ability: AbilityDefinition): void {
+  if (!ability.costStatKey || !ability.costAmount) return;
+  const stat = ruleSet.stats.find((s) => s.key === ability.costStatKey);
+  if (!stat) return;
+  applyEffect(
+    character,
+    stat.kind === "counter"
+      ? { type: "adjustCounter", stat: ability.costStatKey, delta: -ability.costAmount }
+      : { type: "adjustPool", stat: ability.costStatKey, delta: -ability.costAmount },
+  );
 }

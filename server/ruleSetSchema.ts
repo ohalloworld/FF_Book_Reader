@@ -20,6 +20,27 @@ export const StatDefinitionSchema = z.object({
     .describe(
       "dice formula for the starting value exactly as the book states it, e.g. '1D6+6', '2D6+12', or a fixed number like '0' or '10' if there's no roll",
     ),
+  group: z
+    .string()
+    .optional()
+    .describe(
+      "set this ONLY if the stat belongs to a named sub-system distinct from the core character sheet — e.g. 'Your Starship' for its own Armour/Fuel stats, or 'Magic' if the book treats spellcasting as its own block. Leave unset for an ordinary top-level stat like SKILL, STAMINA, LUCK, or even Magic Points if it's just listed as a normal stat, not part of a separate named system.",
+    ),
+});
+
+export const AbilityDefinitionSchema = z.object({
+  key: z.string().describe("machine-safe key, lowercase snake_case, e.g. 'fireball', 'laser_cannon'"),
+  label: z.string().describe("name as printed, e.g. 'Fireball', 'Laser Cannon'"),
+  description: z.string().describe("its effect, as described in the text"),
+  group: z
+    .string()
+    .optional()
+    .describe("which named sub-system this belongs to, matching a stat's own group (e.g. 'Magic', 'Your Starship') — unset if it's not part of one"),
+  costStatKey: z
+    .string()
+    .optional()
+    .describe("stat key (from stats[]) spent to use this, if the book gives it a cost — e.g. 'magic_points', 'fuel'. Unset if using it costs nothing."),
+  costAmount: z.number().optional().describe("how much of costStatKey is spent, if it has a cost"),
 });
 
 export const TestDefinitionSchema = z.object({
@@ -62,10 +83,16 @@ export const RuleSetExtractionSchema = z.object({
     .array(z.string())
     .optional()
     .describe("standard starting equipment every character begins with, if the text mentions it"),
+  abilities: z
+    .array(AbilityDefinitionSchema)
+    .optional()
+    .describe(
+      "every named, individually-usable spell, special ability, or piece of equipment with its own rules/cost the text lists (a spell list, a vehicle's weapons, special moves) — NOT ordinary starting equipment with no rules of its own (that belongs in startingInventory instead). Omit or leave empty if the book has none of these.",
+    ),
   specialRules: z
     .array(z.string())
     .describe(
-      "any other rule or mechanic mentioned in the text that doesn't fit the structured fields above, summarized as short reference notes (e.g. unique potion rules, special abilities). Empty array if none.",
+      "any other rule or mechanic mentioned in the text that doesn't fit the structured fields above, summarized as short reference notes (e.g. unique potion rules, when/how a sub-system like a vehicle can actually be used). Empty array if none.",
     ),
 });
 

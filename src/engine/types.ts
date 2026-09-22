@@ -23,6 +23,31 @@ export interface StatDefinition {
   /** How the starting value is generated, e.g. "1D6+6" or a fixed "12". */
   generation: DiceFormula;
   min?: number;
+  /** Groups this stat under a named sub-system instead of the main
+   * character sheet, e.g. "Your Starship" for its own Armour/Fuel stats,
+   * or "Magic" for Magic Points if a book treats it as its own block
+   * rather than a core stat. Omitted for an ordinary top-level stat
+   * (SKILL, STAMINA, LUCK...), which is the common case. */
+  group?: string;
+}
+
+/** A named, optionally costed action a character (or a grouped
+ * sub-system — a spell under "Magic", a weapon under "Your Starship")
+ * can use during play, e.g. a spell, a special ability, a ship's weapon.
+ * Deliberately the same shape regardless of what the book calls it or
+ * which stat pays for it — a spell costing Magic Points and a starship's
+ * laser cannon costing Fuel are structurally identical. */
+export interface AbilityDefinition {
+  key: string;
+  label: string;
+  /** Effect text, as printed. */
+  description: string;
+  /** Matches a StatDefinition.group, if this ability belongs to one. */
+  group?: string;
+  /** Stat key spent when this ability is used, if any (some abilities —
+   * a basic special move, say — cost nothing). */
+  costStatKey?: string;
+  costAmount?: number;
 }
 
 export type TestSuccessRule = "lte" | "gte";
@@ -58,8 +83,14 @@ export interface RuleSet {
   tests: TestDefinition[];
   combat: CombatRules;
   startingInventory?: string[];
-  /** Rules the parser found but couldn't model structurally (special items,
-   * unique per-book mechanics) — shown to the reader as reference text. */
+  /** Spells, special abilities, a vehicle's weapons — any named, costed
+   * action a book defines outside ordinary combat. See AbilityDefinition. */
+  abilities?: AbilityDefinition[];
+  /** Rules the parser found but couldn't model structurally — genuinely
+   * narrative/conditional mechanics (when a sub-system can even be used,
+   * one-off item rules) that need a specific book's own section graph to
+   * make sense of, which a RuleSet alone never has — shown to the reader
+   * as reference text. */
   specialRules: string[];
   /** How this RuleSet came to be, for the user's own reference. */
   source: "standard" | "imported";

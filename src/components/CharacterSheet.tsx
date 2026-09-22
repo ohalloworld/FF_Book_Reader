@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Character, RuleSet } from "../engine/types";
+import type { AbilityDefinition, Character, RuleSet, StatDefinition } from "../engine/types";
 
 export interface CharacterSheetActions {
   adjustPool: (statKey: string, delta: number) => void;
@@ -7,6 +7,7 @@ export interface CharacterSheetActions {
   adjustCounter: (statKey: string, delta: number) => void;
   addItem: (item: string) => void;
   removeItem: (item: string) => void;
+  useAbility: (abilityKey: string) => void;
 }
 
 function StatAdjuster({ onAdjust }: { onAdjust: (delta: number) => void }) {
@@ -70,6 +71,94 @@ function PoolStat({
   );
 }
 
+/** Renders one group's pool/counter stats — either the top-level "no
+ * group" set (SKILL, STAMINA, LUCK...) or a named sub-system's own stats
+ * (a starship's Armour/Fuel, say), same markup either way. */
+function StatGroup({
+  stats,
+  character,
+  actions,
+}: {
+  stats: StatDefinition[];
+  character: Character;
+  actions?: CharacterSheetActions;
+}) {
+  return (
+    <>
+      {stats
+        .filter((s) => s.kind === "pool")
+        .map((stat) => {
+          const value = character.pools[stat.key];
+          return value ? (
+            <PoolStat
+              key={stat.key}
+              label={stat.label}
+              value={value}
+              onAdjust={actions ? (delta) => actions.adjustPool(stat.key, delta) : undefined}
+              onAdjustMax={actions ? (delta) => actions.adjustPoolMax(stat.key, delta) : undefined}
+            />
+          ) : null;
+        })}
+      {stats
+        .filter((s) => s.kind === "counter")
+        .map((stat) => (
+          <div className="sheet-row counter-row" key={stat.key}>
+            <span>{stat.label}</span>
+            <span className="counter-row-right">
+              <span>{character.counters[stat.key] ?? 0}</span>
+              {actions && <StatAdjuster onAdjust={(delta) => actions.adjustCounter(stat.key, delta)} />}
+            </span>
+          </div>
+        ))}
+    </>
+  );
+}
+
+function AbilityItem({
+  ability,
+  ruleSet,
+  character,
+  actions,
+}: {
+  ability: AbilityDefinition;
+  ruleSet: RuleSet;
+  character: Character;
+  actions?: CharacterSheetActions;
+}) {
+  const costStat = ability.costStatKey ? ruleSet.stats.find((s) => s.key === ability.costStatKey) : undefined;
+  const hasCost = Boolean(ability.costStatKey && ability.costAmount);
+  const available =
+    !hasCost || !ability.costStatKey || !ability.costAmount
+      ? true
+      : costStat?.kind === "counter"
+        ? (character.counters[ability.costStatKey] ?? 0) >= ability.costAmount
+        : (character.pools[ability.costStatKey]?.current ?? 0) >= ability.costAmount;
+
+  return (
+    <li className="ability-item">
+      <div className="ability-item-header">
+        <strong>{ability.label}</strong>
+        {hasCost && (
+          <span className="muted small">
+            {ability.costAmount} {costStat?.label ?? ability.costStatKey}
+          </span>
+        )}
+      </div>
+      <p className="muted small ability-description">{ability.description}</p>
+      {actions && (
+        <button
+          type="button"
+          className="choice-button secondary"
+          disabled={!available}
+          onClick={() => actions.useAbility(ability.key)}
+        >
+          Use
+        </button>
+      )}
+    </li>
+  );
+}
+
 export function CharacterSheet({
   character,
   ruleSet,
@@ -79,35 +168,49 @@ export function CharacterSheet({
   ruleSet: RuleSet;
   actions?: CharacterSheetActions;
 }) {
-  const pools = ruleSet.stats.filter((s) => s.kind === "pool");
-  const counters = ruleSet.stats.filter((s) => s.kind === "counter");
   const [newItem, setNewItem] = useState("");
+
+  const ungroupedStats = ruleSet.stats.filter((s) => !s.group);
+  const abilities = ruleSet.abilities ?? [];
+  const ungroupedAbilities = abilities.filter((a) => !a.group);
+
+  const groupNames = Array.from(
+    new Set([...ruleSet.stats.flatMap((s) => (s.group ? [s.group] : [])), ...abilities.flatMap((a) => (a.group ? [a.group] : []))]),
+  );
 
   return (
     <aside className="character-sheet">
       <h2>{character.name}</h2>
-      {pools.map((stat) => {
-        const value = character.pools[stat.key];
-        return value ? (
-          <PoolStat
-            key={stat.key}
-            label={stat.label}
-            value={value}
-            onAdjust={actions ? (delta) => actions.adjustPool(stat.key, delta) : undefined}
-            onAdjustMax={actions ? (delta) => actions.adjustPoolMax(stat.key, delta) : undefined}
-          />
-        ) : null;
-      })}
+      <StatGroup stats={ungroupedStats} character={character} actions={actions} />
 
-      {counters.map((stat) => (
-        <div className="sheet-row counter-row" key={stat.key}>
-          <span>{stat.label}</span>
-          <span className="counter-row-right">
-            <span>{character.counters[stat.key] ?? 0}</span>
-            {actions && <StatAdjuster onAdjust={(delta) => actions.adjustCounter(stat.key, delta)} />}
-          </span>
-        </div>
-      ))}
+      {ungroupedAbilities.length > 0 && (
+        <>
+          <h3>Abilities</h3>
+          <ul className="ability-list">
+            {ungroupedAbilities.map((ability) => (
+              <AbilityItem key={ability.key} ability={ability} ruleSet={ruleSet} character={character} actions={actions} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {groupNames.map((group) => {
+        const groupStats = ruleSet.stats.filter((s) => s.group === group);
+        const groupAbilities = abilities.filter((a) => a.group === group);
+        return (
+          <div className="stat-group" key={group}>
+            <h3>{group}</h3>
+            <StatGroup stats={groupStats} character={character} actions={actions} />
+            {groupAbilities.length > 0 && (
+              <ul className="ability-list">
+                {groupAbilities.map((ability) => (
+                  <AbilityItem key={ability.key} ability={ability} ruleSet={ruleSet} character={character} actions={actions} />
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
 
       <h3>Inventory</h3>
       {character.inventory.length === 0 ? (

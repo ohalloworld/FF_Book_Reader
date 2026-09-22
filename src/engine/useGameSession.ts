@@ -8,7 +8,7 @@ import {
   type CombatModifiers,
   type CombatRoundResult,
 } from "./combat";
-import { applyEffect, applyEffects, availableChoices, cloneCharacter, isAlive } from "./rules";
+import { applyEffect, applyEffects, availableChoices, cloneCharacter, isAlive, spendAbilityCost } from "./rules";
 import { clearGame, loadGame, saveGame } from "./storage";
 import type { Character, Choice, Gamebook, Monster, MultiMonsterMode, Section, SectionId } from "./types";
 
@@ -364,6 +364,19 @@ export function useGameSession(book: Gamebook) {
     [character, currentSectionId, persist],
   );
 
+  const useAbilityAction = useCallback(
+    (abilityKey: string) => {
+      if (!character) return;
+      const ability = ruleSet.abilities?.find((a) => a.key === abilityKey);
+      if (!ability) return;
+      const updated = cloneCharacter(character);
+      spendAbilityCost(updated, ruleSet, ability);
+      setCharacter(updated);
+      persist(updated, currentSectionId);
+    },
+    [character, currentSectionId, persist, ruleSet],
+  );
+
   const addItem = useCallback(
     (item: string) => {
       const trimmed = item.trim();
@@ -477,6 +490,7 @@ export function useGameSession(book: Gamebook) {
     adjustPool,
     adjustPoolMax,
     adjustCounter,
+    useAbility: useAbilityAction,
     addItem,
     removeItem,
     useLuckOnRound,

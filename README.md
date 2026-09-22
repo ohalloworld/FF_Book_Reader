@@ -316,6 +316,24 @@ machine — extraction and page rendering happen in the local dev server, and
 only the rules text or page images you approve get sent to Claude for
 parsing.
 
+Beyond the core SKILL/STAMINA/LUCK-shaped stats, extraction also looks for
+a named sub-system the book defines on top of that — a spellcasting system
+with its own Magic Points and spell list, a vehicle (a car, a starship)
+with its own stats like Armour or Fuel, a special-abilities list. A
+`StatDefinition` can carry an optional `group` (its name as the book gives
+it, e.g. "Magic" or "Your Starship") to render under its own heading
+instead of the main sheet, and `RuleSet.abilities` holds every individually
+named, usable thing with a cost — a spell, a ship's weapon — tagged with
+the same group and which stat pays for it. During play, each shows up
+under the character sheet with a **Use** button that deducts its cost
+(disabled once you can't afford it) — see `useAbility`/`spendAbilityCost`
+in `src/engine/rules.ts`. Most books have no such sub-system at all, in
+which case `abilities` stays empty and every stat is ungrouped, same as
+before. Anything genuinely book-specific about *when* a sub-system applies
+(e.g. "the car can only be driven on road sections") stays in
+`specialRules` as text — that's inherently tied to a specific book's own
+section graph, which a RuleSet on its own has no knowledge of.
+
 The whole PDF you pick gets uploaded on selection, before you've chosen a
 page range (`extract-pdf-text` needs the full page count and text first) —
 so a full scanned book (image-only pages, no text layer, exactly the case
@@ -462,8 +480,10 @@ confirmation), transcription caching, character rolling, raising a pool
 stat's max, adding a book (saved immediately, PDF attachment handed off
 as its own step), an oversized PDF being rejected locally with no upload
 attempted, a background bulk-transcribe job's progress surviving its
-originating tab closing entirely and syncing into a brand-new one, and
-the backup export/import round trip — real browser interactions against a real (but
+originating tab closing entirely and syncing into a brand-new one, a
+grouped sub-system's stat and a costed ability working end-to-end from
+import through play (including the Use button disabling once you can't
+afford it), and the backup export/import round trip — real browser interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
 endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it

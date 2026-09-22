@@ -14,6 +14,7 @@ export function RuleSetSummary({ ruleSet }: { ruleSet: RuleSet }) {
             <th>Key</th>
             <th>Kind</th>
             <th>Generation</th>
+            <th>Group</th>
           </tr>
         </thead>
         <tbody>
@@ -25,6 +26,7 @@ export function RuleSetSummary({ ruleSet }: { ruleSet: RuleSet }) {
               </td>
               <td>{s.kind}</td>
               <td>{s.generation}</td>
+              <td>{s.group ?? "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -59,6 +61,24 @@ export function RuleSetSummary({ ruleSet }: { ruleSet: RuleSet }) {
             {ruleSet.startingInventory.map((item) => (
               <li key={item}>{item}</li>
             ))}
+          </ul>
+        </>
+      )}
+
+      {ruleSet.abilities && ruleSet.abilities.length > 0 && (
+        <>
+          <h3>Abilities</h3>
+          <ul>
+            {ruleSet.abilities.map((a) => {
+              const costStat = a.costStatKey ? ruleSet.stats.find((s) => s.key === a.costStatKey) : undefined;
+              return (
+                <li key={a.key}>
+                  <strong>{a.label}</strong>
+                  {a.group && <span className="muted"> ({a.group})</span>}
+                  {a.costStatKey && a.costAmount ? ` — costs ${a.costAmount} ${costStat?.label ?? a.costStatKey}` : ""}: {a.description}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

@@ -10,9 +10,11 @@ const EXTRACTION_SYSTEM_PROMPT = `You extract structured game rules from the rul
 - every named dice test (Luck, Skill, or anything book-specific)
 - how combat is resolved
 - standard starting equipment, if mentioned
-- any other rule or mechanic that doesn't fit those fields, as short reference notes
+- every named sub-system the book defines beyond the core character (a spellcasting system with its own Magic Points, a vehicle like a car or starship with its own stats such as Armour or Fuel, a special-abilities list, etc.) — give its own stat(s) a shared "group" label (its name as the book gives it, e.g. "Magic" or "Your Starship"), and NEVER invent one of these for a book that doesn't have it — most Fighting Fantasy books have no sub-system at all, just the core stats
+- every individually-named, usable spell, special ability, or piece of equipment with its own cost or effect (a spell list, a vehicle's weapons) as an entry in abilities — tag each with the same group as its sub-system's stats, and its cost as a stat key + amount if the book gives it one. Ordinary starting gear with no rules of its own (a sword, a rope, rations) is NOT an ability — that belongs in startingInventory instead.
+- any other rule or mechanic that doesn't fit those fields, as short reference notes — including when/how a sub-system can actually be used, if the book says (e.g. "the car can only be driven on road sections"), since that's inherently tied to this specific book's own story and can't be captured structurally
 
-Use lowercase snake_case for machine keys. Base everything strictly on what the source actually says — don't invent mechanics it doesn't describe. If it only covers part of the rules (e.g. no combat section), still fill in your best structural guess for the missing parts using standard Fighting Fantasy conventions (2D6 + SKILL combat, 2 STAMINA damage per lost round) and note the gap in specialRules.`;
+Use lowercase snake_case for machine keys. Base everything strictly on what the source actually says — don't invent mechanics, stats, sub-systems, or abilities it doesn't describe. If it only covers part of the rules (e.g. no combat section), still fill in your best structural guess for the missing parts using standard Fighting Fantasy conventions (2D6 + SKILL combat, 2 STAMINA damage per lost round) and note the gap in specialRules.`;
 
 // The whole PDF gets uploaded here (extract-pdf-text runs on file select,
 // before any page range is picked; render-pdf-pages re-sends the same
