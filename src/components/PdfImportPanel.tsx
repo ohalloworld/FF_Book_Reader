@@ -3,6 +3,12 @@ import { extractPdfText, renderPdfPages, type PdfPage } from "../engine/parseRul
 
 type Status = "idle" | "loading" | "error";
 
+// Matches MAX_PDF_UPLOAD_BYTES in server/rulesApiPlugin.ts. Checked here
+// first so an oversized file (or the wrong file entirely) gets an
+// immediate, friendly, local error instead of spending however long it
+// takes to upload the whole thing first.
+const MAX_PDF_UPLOAD_BYTES = 300 * 1024 * 1024;
+
 interface PdfImportPanelProps {
   onUseText: (text: string) => void;
   onUseImages: (images: string[]) => void;
@@ -25,12 +31,20 @@ export function PdfImportPanel({ onUseText, onUseImages }: PdfImportPanelProps) 
   const [renderedImages, setRenderedImages] = useState<string[] | null>(null);
 
   const handleFile = async (selected: File) => {
-    setStatus("loading");
     setError(null);
     setFile(selected);
     setFileName(selected.name);
     setRenderedImages(null);
     setRenderError(null);
+    if (selected.size > MAX_PDF_UPLOAD_BYTES) {
+      setPages(null);
+      setError(
+        `That PDF is ${(selected.size / 1024 / 1024).toFixed(0)}MB, over the ${MAX_PDF_UPLOAD_BYTES / 1024 / 1024}MB limit — try splitting out just the rules section as its own PDF first.`,
+      );
+      setStatus("error");
+      return;
+    }
+    setStatus("loading");
     try {
       const result = await extractPdfText(selected);
       setPages(result.pages);

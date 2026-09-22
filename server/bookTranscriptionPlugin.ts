@@ -7,7 +7,11 @@ import type { Plugin } from "vite";
 import { isSafeId, readRawBody, rejectCrossOrigin, sendJson, splitDataUrl } from "./httpUtils.js";
 import { PageTranscriptionSchema } from "./pageTranscriptionSchema.js";
 
-const MAX_PDF_BYTES = 40 * 1024 * 1024;
+// The whole PDF gets uploaded and stored here. A real scanned gamebook —
+// image-only pages, no text layer — can easily run past 100MB for a full
+// book, so this needs real headroom (see the matching comment in
+// rulesApiPlugin.ts, which hits the identical whole-book-upload sizing).
+const MAX_PDF_BYTES = 300 * 1024 * 1024;
 const BOOKS_DIR = path.join(process.cwd(), ".local-books");
 // Override for cost/quality experiments — the default stays claude-opus-5.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";

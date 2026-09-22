@@ -14,7 +14,18 @@ const EXTRACTION_SYSTEM_PROMPT = `You extract structured game rules from the rul
 
 Use lowercase snake_case for machine keys. Base everything strictly on what the source actually says — don't invent mechanics it doesn't describe. If it only covers part of the rules (e.g. no combat section), still fill in your best structural guess for the missing parts using standard Fighting Fantasy conventions (2D6 + SKILL combat, 2 STAMINA damage per lost round) and note the gap in specialRules.`;
 
-const MAX_PDF_BYTES = 40 * 1024 * 1024; // 40MB — plenty for a scanned-text gamebook, cheap to cap
+// The whole PDF gets uploaded here (extract-pdf-text runs on file select,
+// before any page range is picked; render-pdf-pages re-sends the same
+// file with just a page range). A real scanned gamebook — image-only
+// pages, no text layer, exactly the case "Parse from page images" exists
+// for — can easily run past 100MB for a full book, so this needs real
+// headroom, not just enough for a compact text-layer PDF.
+const MAX_PDF_UPLOAD_BYTES = 300 * 1024 * 1024;
+// /api/parse-rules's body is far smaller than a whole PDF, but up to
+// MAX_RENDER_PAGES rendered page images (base64, scale 2) can still add
+// up to tens of MB — give it real headroom too, just less than a whole
+// scanned book needs.
+const MAX_PARSE_BODY_BYTES = 80 * 1024 * 1024;
 const MAX_RENDER_PAGES = 25; // a rules section is never this long; guards against rendering a whole book
 // Override for cost/quality experiments — the default stays claude-opus-5.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
@@ -36,7 +47,7 @@ export function rulesApiPlugin(): Plugin {
 
         let parser: PDFParse | null = null;
         try {
-          const pdfBytes = await readRawBody(req, MAX_PDF_BYTES);
+          const pdfBytes = await readRawBody(req, MAX_PDF_UPLOAD_BYTES);
           if (pdfBytes.length === 0) {
             sendJson(res, 400, { error: "No PDF data received." });
             return;
@@ -87,7 +98,7 @@ export function rulesApiPlugin(): Plugin {
             return;
           }
 
-          const pdfBytes = await readRawBody(req, MAX_PDF_BYTES);
+          const pdfBytes = await readRawBody(req, MAX_PDF_UPLOAD_BYTES);
           if (pdfBytes.length === 0) {
             sendJson(res, 400, { error: "No PDF data received." });
             return;
@@ -114,7 +125,7 @@ export function rulesApiPlugin(): Plugin {
         }
 
         try {
-          const body = (await readJsonBody(req, MAX_PDF_BYTES)) as {
+          const body = (await readJsonBody(req, MAX_PARSE_BODY_BYTES)) as {
             rulesText?: unknown;
             pageImages?: unknown;
           };

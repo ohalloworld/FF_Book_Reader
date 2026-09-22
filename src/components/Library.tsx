@@ -9,6 +9,12 @@ import { testBook } from "../data/testBook";
 import { BackupPanel } from "./BackupPanel";
 import { BulkTranscribeControl } from "./BulkTranscribe";
 
+// Matches MAX_PDF_BYTES in server/bookTranscriptionPlugin.ts. Checked
+// here first so an oversized file gets an immediate, friendly, local
+// error instead of spending however long it takes to upload the whole
+// thing first.
+const MAX_PDF_UPLOAD_BYTES = 300 * 1024 * 1024;
+
 function uniqueId(base: string, existing: string[]): string {
   if (!existing.includes(base)) return base;
   let i = 2;
@@ -76,8 +82,14 @@ export function Library({ onPlay }: { onPlay: (book: Gamebook) => void }) {
   };
 
   const handleAttachExisting = async (bookId: string, file: File) => {
-    setAttaching(bookId);
     setError(null);
+    if (file.size > MAX_PDF_UPLOAD_BYTES) {
+      setError(
+        `That PDF is ${(file.size / 1024 / 1024).toFixed(0)}MB, over the ${MAX_PDF_UPLOAD_BYTES / 1024 / 1024}MB limit.`,
+      );
+      return;
+    }
+    setAttaching(bookId);
     try {
       await attachBookPdf(bookId, file);
       const status = await getPdfStatus(bookId);

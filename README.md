@@ -310,6 +310,14 @@ machine — extraction and page rendering happen in the local dev server, and
 only the rules text or page images you approve get sent to Claude for
 parsing.
 
+The whole PDF you pick gets uploaded on selection, before you've chosen a
+page range (`extract-pdf-text` needs the full page count and text first) —
+so a full scanned book (image-only pages, no text layer, exactly the case
+"Parse from page images" exists for) can be well over 100MB and still
+work: the upload cap is 300MB, checked client-side first so an oversized
+file (or the wrong file) fails instantly with no upload attempt at all,
+same as the "Attach PDF" cap on a Library book.
+
 Note: this only extracts the *rules*, not a book's story text (which is
 copyrighted) — pairing an imported rule set with that book's actual section
 content is a separate step of writing your own `Gamebook` (see below). Keep
@@ -413,7 +421,8 @@ npm run test:e2e # Playwright end-to-end suite (see tests/)
 Attack Strength modifiers), save/resume (and the new-game overwrite
 confirmation), transcription caching, character rolling, raising a pool
 stat's max, adding a book (saved immediately, PDF attachment handed off
-as its own step), and the backup export/import round trip — real browser
+as its own step), an oversized PDF being rejected locally with no upload
+attempted, and the backup export/import round trip — real browser
 interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
