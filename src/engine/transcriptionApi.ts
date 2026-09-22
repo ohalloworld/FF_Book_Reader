@@ -57,3 +57,61 @@ export async function transcribePage(bookId: string, page: number): Promise<Page
   });
   return readJsonOrThrow<PageTranscriptionResult>(response);
 }
+
+export type BulkTranscribeStatus = {
+  status: "idle" | "running" | "done" | "cancelled" | "error";
+  total: number;
+  done: number;
+  currentPage: number | null;
+  failedPages: number[];
+  error?: string;
+};
+
+/** Starts (or, if one's already running, just confirms) a background
+ * transcription job on the dev server for the given pages — the server
+ * keeps working through them on its own, independent of this browser tab,
+ * so locking the phone or closing the app entirely doesn't interrupt it.
+ * Progress is picked up again via getBulkTranscribeStatus + syncBookPages,
+ * from this tab or any other one that opens the book later. */
+export async function startBulkTranscribe(bookId: string, pages: number[]): Promise<void> {
+  const response = await fetch(`/api/library/${bookId}/bulk-transcribe`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pages }),
+  });
+  await readJsonOrThrow<{ ok: true }>(response);
+}
+
+export async function cancelBulkTranscribe(bookId: string): Promise<void> {
+  const response = await fetch(`/api/library/${bookId}/bulk-transcribe/cancel`, { method: "POST" });
+  await readJsonOrThrow<{ ok: true }>(response);
+}
+
+export async function getBulkTranscribeStatus(bookId: string): Promise<BulkTranscribeStatus> {
+  const response = await fetch(`/api/library/${bookId}/bulk-transcribe-status`);
+  return readJsonOrThrow<BulkTranscribeStatus>(response);
+}
+
+/** Every page the server has transcribed for this book so far — the
+ * durable, server-side copy a background job writes to as it works.
+ * Synced down into this browser's own local cache (storage.ts +
+ * pageImageStore.ts) by syncBookPages, so the reader keeps working with
+ * no server reachable at all once synced, same as a page transcribed
+ * directly in this tab always has. */
+export async function getServerBookPages(bookId: string): Promise<Record<number, TranscribedPage>> {
+  const response = await fetch(`/api/library/${bookId}/pages`);
+  const body = await readJsonOrThrow<{ pages: Record<number, TranscribedPage> }>(response);
+  return body.pages;
+}
+
+export async function getServerPageImage(bookId: string, page: number): Promise<string | undefined> {
+  const response = await fetch(`/api/library/${bookId}/page-image/${page}`);
+  if (!response.ok) return undefined;
+  const blob = await response.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}

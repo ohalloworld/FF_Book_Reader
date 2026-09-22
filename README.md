@@ -195,6 +195,12 @@ way, independent of whichever mode is currently running.
   grid, one cell per PDF page, filled in once that page is transcribed —
   a way to see at a glance how much of a book is actually readable before
   you start, or after a bulk run finishes.
+  **The job itself runs on the dev server, not in this tab**: clicking
+  Pre-transcribe just tells the server which pages to work through
+  (`POST .../bulk-transcribe`); the server then keeps going on its own,
+  page by page, writing each result to disk as it finishes, whether or
+  not any browser is even open to watch it — see "Transcribing in the
+  background" below.
   `src/components/PdfPageTools.tsx`'s page browser also has a
   **Retranscribe this page** action, distinct from manual Edit — for when
   a scan was blurry and the OCR read is just wrong, without hand-retyping
@@ -385,6 +391,39 @@ For the built-in demo (and any Library book you write by hand instead of
 transcribing), everything's already baked into the app bundle the service
 worker caches, so those play fully offline with no pre-step at all.
 
+### Transcribing in the background
+
+Pre-transcribing a whole book means dozens of slow, one-at-a-time Claude
+calls — easily several minutes for a full gamebook. Earlier, that whole
+loop ran in your phone's browser tab: lock the phone, switch apps, or let
+the tab go to sleep, and the loop (and whatever page it was mid-request
+on) just stopped.
+
+It doesn't anymore. Clicking **Pre-transcribe entire book** starts a job
+*on the dev server* (`POST .../bulk-transcribe`) and returns immediately —
+the server then works through the page list entirely on its own,
+independent of any browser tab, writing each transcribed page (text and
+image) to `.local-books/<bookId>-pages.json` and
+`.local-books/<bookId>-images/` as it goes (`server/bookTranscriptionPlugin.ts`).
+Your phone's tab is just a viewer at that point: `BulkTranscribeControl`
+polls `GET .../bulk-transcribe-status` every couple of seconds while a
+job's running, and syncs newly-finished pages down into your phone's own
+`localStorage`/IndexedDB (`src/engine/pageSync.ts`) so they're read-ready
+offline exactly like a page transcribed the old, single-page way always
+has been. Lock the phone, close the tab, put the phone away entirely — the
+job keeps going on the computer regardless, and reopening the book later
+(on that phone or any other device pointed at the same server) picks up
+right where the server actually got to, synced down automatically. A
+dev-server restart does drop the *in-memory* job-progress tracking, but
+never the pages it had already written to disk — starting the job again
+afterward just skips those and tops up the rest.
+
+Single-page transcription (the blank-section prompt, **Retranscribe this
+page**) still works exactly as before and is unaffected by any of this —
+it's just now *also* durably persisted server-side the same way, as a
+side effect of sharing the same underlying `transcribeOnePage` code path
+the bulk job uses.
+
 **Without a PDF (or for anything not transcribed yet):** the reader falls
 back to companion mode — follow the book's printed choice ("turn to 245")
 via the **Go to paragraph** box, or use **Companion Tools** to roll a
@@ -422,8 +461,9 @@ Attack Strength modifiers), save/resume (and the new-game overwrite
 confirmation), transcription caching, character rolling, raising a pool
 stat's max, adding a book (saved immediately, PDF attachment handed off
 as its own step), an oversized PDF being rejected locally with no upload
-attempted, and the backup export/import round trip — real browser
-interactions against a real (but
+attempted, a background bulk-transcribe job's progress surviving its
+originating tab closing entirely and syncing into a brand-new one, and
+the backup export/import round trip — real browser interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
 endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it
