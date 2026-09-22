@@ -122,13 +122,34 @@ async function transcribeOnePage(bookId: string, page: number): Promise<{ pdfPag
   }
 
   const client = new Anthropic();
-  const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 8000,
-    system: [{ type: "text", text: TRANSCRIBE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content }],
-    output_config: { format: zodOutputFormat(PageTranscriptionSchema) },
-  });
+  let response: Awaited<ReturnType<typeof client.messages.parse>>;
+  try {
+    response = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 8000,
+      system: [{ type: "text", text: TRANSCRIBE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content }],
+      output_config: { format: zodOutputFormat(PageTranscriptionSchema) },
+    });
+  } catch (err) {
+    // Anthropic's own safety system, not a bug here — older gamebooks
+    // routinely describe or depict violence (monster combat, trap deaths)
+    // that occasionally trips it, especially from a scanned illustration.
+    // No retry or prompt change on our end can force it through; the
+    // practical path is transcribing that page's paragraphs by hand as
+    // you reach them (SectionView's "Type it in by hand", shown for any
+    // paragraph with no text yet) rather than through this page-image
+    // pipeline.
+    if (err instanceof Error && /content filtering/i.test(err.message)) {
+      throw Object.assign(
+        new Error(
+          "Claude's safety filters blocked this page, most likely because of violent or graphic content on it (common in these books) — not a bug on our end, and not something a retry can fix. Once you reach a paragraph from this page in the story, use \"Type it in by hand\" to transcribe it yourself instead.",
+        ),
+        { statusCode: 502 },
+      );
+    }
+    throw err;
+  }
 
   if (!response.parsed_output) {
     throw Object.assign(new Error("Claude did not return a parseable transcription. Try again."), { statusCode: 502 });

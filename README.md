@@ -198,7 +198,17 @@ way, independent of whichever mode is currently running.
   actual error next to its page number (not just "page 12 failed") — e.g.
   a genuinely blank/illustration-only page Claude has nothing to
   transcribe from usually says so plainly, which is a real, expected
-  outcome for that page rather than a bug to retry.
+  outcome for that page rather than a bug to retry. One specific known
+  case: Claude's own safety system occasionally blocks a page outright
+  ("content filtering policy" in the raw error) — older gamebooks
+  routinely depict combat/monster-death violence, and a scanned
+  illustration of it can trip this. `bookTranscriptionPlugin.ts` detects
+  that specific error and rewrites it into a plain explanation instead of
+  the raw API response; there's no retry or prompt change on our end that
+  reliably gets it past that filter, so the practical fallback is typing
+  that page's paragraphs in by hand as you reach them in the story, via
+  the section view's **Type it in by hand** button (see "Playing a real
+  book" above).
   **The job itself runs on the dev server, not in this tab**: clicking
   Pre-transcribe just tells the server which pages to work through
   (`POST .../bulk-transcribe`); the server then keeps going on its own,
@@ -376,7 +386,10 @@ choice buttons — click one like any authored section, no more typing
 numbers. If the page had any artwork, **Show page artwork** displays the
 actual scanned page (art and text as printed — the same image already
 rendered for transcription, at no extra cost) underneath the transcribed
-text. Got a misread? **Edit this paragraph** fixes it by hand. Want to
+text. Got a misread? **Edit this paragraph** fixes it by hand — the same
+button reads **Type it in by hand** instead when there's no transcribed
+text at all yet, e.g. a page Claude's safety filters wouldn't transcribe
+(see "Transcribing in the background" below). Want to
 skim ahead or double-check something without moving your character? Open
 **Browse PDF Pages** and flip Prev/Next, or type a page number into **Go to
 page** to jump straight there — it shows each page's image too.
