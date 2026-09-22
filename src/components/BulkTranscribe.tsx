@@ -125,9 +125,16 @@ export function BulkTranscribeControl({ bookId, totalPages }: { bookId: string; 
       {!running && status && status.failedPages.length > 0 && (
         <div className="bulk-transcribe-failed">
           <span className="muted small">
-            Couldn't transcribe page{status.failedPages.length === 1 ? "" : "s"} {status.failedPages.join(", ")}.
+            Couldn't transcribe {status.failedPages.length} page{status.failedPages.length === 1 ? "" : "s"}:
           </span>
-          <button type="button" className="link-button" onClick={() => void start(status.failedPages)}>
+          <ul className="bulk-transcribe-failed-list">
+            {status.failedPages.map((f) => (
+              <li key={f.page} className="muted small">
+                Page {f.page}: {f.error}
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="link-button" onClick={() => void start(status.failedPages.map((f) => f.page))}>
             Retry
           </button>
         </div>

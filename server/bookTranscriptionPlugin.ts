@@ -146,7 +146,7 @@ interface BulkJob {
   total: number;
   done: number;
   currentPage: number | null;
-  failedPages: number[];
+  failedPages: { page: number; error: string }[];
   error?: string;
   cancelRequested: boolean;
 }
@@ -175,8 +175,8 @@ function runBulkJob(bookId: string, pages: number[]): void {
       try {
         await transcribeOnePage(bookId, page);
         job.done++;
-      } catch {
-        job.failedPages.push(page);
+      } catch (err) {
+        job.failedPages.push({ page, error: err instanceof Error ? err.message : "Unknown error" });
       }
     }
     job.status = "done";

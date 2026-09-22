@@ -194,7 +194,11 @@ way, independent of whichever mode is currently running.
   no server reachable at all. Its **Show page map** toggle renders a small
   grid, one cell per PDF page, filled in once that page is transcribed —
   a way to see at a glance how much of a book is actually readable before
-  you start, or after a bulk run finishes.
+  you start, or after a bulk run finishes. A page that fails shows its
+  actual error next to its page number (not just "page 12 failed") — e.g.
+  a genuinely blank/illustration-only page Claude has nothing to
+  transcribe from usually says so plainly, which is a real, expected
+  outcome for that page rather than a bug to retry.
   **The job itself runs on the dev server, not in this tab**: clicking
   Pre-transcribe just tells the server which pages to work through
   (`POST .../bulk-transcribe`); the server then keeps going on its own,
@@ -483,7 +487,8 @@ attempted, a background bulk-transcribe job's progress surviving its
 originating tab closing entirely and syncing into a brand-new one, a
 grouped sub-system's stat and a costed ability working end-to-end from
 import through play (including the Use button disabling once you can't
-afford it), and the backup export/import round trip — real browser interactions against a real (but
+afford it), a bulk-transcribe job's real per-page error surfacing in the
+UI instead of just a page number, and the backup export/import round trip — real browser interactions against a real (but
 dedicated-port, disposable) dev server instance, not unit tests against the
 engine in isolation. Every test that would otherwise hit a billed Claude
 endpoint (`/api/parse-rules`, `/api/library/*/transcribe-page`) mocks it

@@ -63,7 +63,7 @@ export type BulkTranscribeStatus = {
   total: number;
   done: number;
   currentPage: number | null;
-  failedPages: number[];
+  failedPages: { page: number; error: string }[];
   error?: string;
 };
 

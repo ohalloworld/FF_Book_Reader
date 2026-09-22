@@ -224,12 +224,23 @@ p {
   font-size: 14px;
 }
 
-.bulk-transcribe-progress,
-.bulk-transcribe-failed {
+.bulk-transcribe-progress {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.bulk-transcribe-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.bulk-transcribe-failed-list {
+  margin: 0;
+  padding-left: 18px;
 }
 
 .muted.small {
